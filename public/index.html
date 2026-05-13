@@ -166,7 +166,6 @@
   <h1>PDP Tracker Dashboard</h1>
   <span id="last-updated" class="badge">–</span>
   <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
-  <button class="clear-btn" onclick="clearData()">🗑 Clear all data</button>
 </div>
 
 <main>
@@ -174,11 +173,11 @@
   <!-- Time filter bar -->
   <div class="time-filter">
     <span>Period:</span>
-    <button class="tf-btn" data-range="today"     onclick="setRange(this)">Today</button>
+    <button class="tf-btn active" data-range="today"     onclick="setRange(this)">Today</button>
     <button class="tf-btn" data-range="yesterday" onclick="setRange(this)">Yesterday</button>
     <button class="tf-btn" data-range="7d"        onclick="setRange(this)">Last 7 days</button>
     <button class="tf-btn" data-range="30d"       onclick="setRange(this)">Last 30 days</button>
-    <button class="tf-btn active" data-range="all" onclick="setRange(this)">All time</button>
+    <button class="tf-btn" data-range="all"       onclick="setRange(this)">All time</button>
   </div>
 
   <!-- Live view -->
@@ -350,7 +349,7 @@ function buildOrUpdate(ref, canvasId, type, labels, datasets, options) {
 }
 
 // ── Time filter ──────────────────────────────────────────────────────────────
-let activeRange = 'all';
+let activeRange = 'today';
 
 function setRange(btn) {
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
