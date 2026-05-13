@@ -1,0 +1,54 @@
+import fs from 'fs';
+import path from 'path';
+
+const FILE = '/tmp/events.json';
+
+const ALLOWED_ORIGINS = [
+  'https://mirathelle.com',
+  'https://www.mirathelle.com',
+];
+
+function setCORS(req, res) {
+  const origin  = req.headers.origin || '';
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  res.setHeader('Access-Control-Allow-Origin',  allowed);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Vary', 'Origin');
+}
+
+function loadEvents() {
+  try {
+    if (!fs.existsSync(FILE)) return [];
+    const raw = fs.readFileSync(FILE, 'utf8').trim();
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveEvents(events) {
+  fs.writeFileSync(FILE, JSON.stringify(events), 'utf8');
+}
+
+export default function handler(req, res) {
+  setCORS(req, res);
+
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  if (req.method !== 'POST')    { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+  try {
+    const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+    event._server_ts = new Date().toISOString();
+    event._ip = (req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '').split(',')[0].trim();
+
+    const events = loadEvents();
+    events.unshift(event);               // newest first
+    if (events.length > 500) events.length = 500;
+    saveEvents(events);
+
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('[track]', err.message);
+    res.status(400).json({ ok: false, error: err.message });
+  }
+}

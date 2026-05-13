@@ -1,0 +1,270 @@
+{% comment %}
+  ============================================================
+  CUSTOM PDP VISITOR TRACKER  —  severinnhq/shopifytracker
+  Paste this inside your product.liquid template (or as a
+  Shopify Section snippet included on the PDP).
+  Replace TRACKER_ENDPOINT below with your server URL.
+  ============================================================
+{% endcomment %}
+
+<script>
+(function () {
+  'use strict';
+
+  // ─── CONFIG ──────────────────────────────────────────────────────────────
+  var ENDPOINT = 'https://shopifytracker.vercel.app/api/track';
+  var SCROLL_DEBOUNCE_MS = 500;
+  var TIME_ON_PAGE_INTERVAL_MS = 15000; // heartbeat every 15 s
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Shopify product data injected by Liquid ──────────────────────────────
+  var PRODUCT = {
+    id:       {{ product.id | json }},
+    handle:   {{ product.handle | json }},
+    title:    {{ product.title | json }},
+    vendor:   {{ product.vendor | json }},
+    type:     {{ product.type | json }},
+    price:    {{ product.selected_or_first_available_variant.price | json }},
+    variant_id: {{ product.selected_or_first_available_variant.id | json }},
+    variant_title: {{ product.selected_or_first_available_variant.title | json }},
+    available: {{ product.available | json }},
+    tags:     {{ product.tags | json }},
+    url:      {{ shop.url | append: product.url | json }}
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Session / visitor fingerprint ────────────────────────────────────────
+  function getSessionId() {
+    var key = '_trk_sid';
+    var sid = sessionStorage.getItem(key);
+    if (!sid) {
+      sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+      sessionStorage.setItem(key, sid);
+    }
+    return sid;
+  }
+
+  function getVisitorId() {
+    var key = '_trk_vid';
+    try {
+      var vid = localStorage.getItem(key);
+      if (!vid) {
+        vid = 'vis_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+        localStorage.setItem(key, vid);
+      }
+      return vid;
+    } catch (e) {
+      return 'vis_nls_' + Math.random().toString(36).slice(2, 11);
+    }
+  }
+
+  function isNewVisitor() {
+    var key = '_trk_seen';
+    try {
+      var seen = !!localStorage.getItem(key);
+      if (!seen) localStorage.setItem(key, '1');
+      return !seen;
+    } catch (e) { return false; }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── UTM & referrer parsing ────────────────────────────────────────────────
+  function parseUTM() {
+    var params = {};
+    var search = window.location.search.slice(1).split('&');
+    for (var i = 0; i < search.length; i++) {
+      var pair = search[i].split('=');
+      if (pair[0] && pair[0].indexOf('utm_') === 0) {
+        params[pair[0]] = decodeURIComponent(pair[1] || '');
+      }
+    }
+    return params;
+  }
+
+  function getReferrerSource() {
+    var ref = document.referrer;
+    if (!ref) return 'direct';
+    try {
+      var host = new URL(ref).hostname.replace('www.', '');
+      var socials = ['facebook.com','instagram.com','tiktok.com','twitter.com',
+                     'x.com','pinterest.com','youtube.com','linkedin.com','snapchat.com'];
+      var search  = ['google.','bing.com','yahoo.','duckduckgo.com','baidu.','yandex.'];
+      for (var s = 0; s < socials.length; s++) { if (host.indexOf(socials[s]) > -1) return 'social:' + host; }
+      for (var g = 0; g < search.length;  g++) { if (host.indexOf(search[g])  > -1) return 'search:' + host; }
+      return 'referral:' + host;
+    } catch (e) { return 'referral:' + ref.slice(0, 80); }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Device / browser detection ───────────────────────────────────────────
+  function getDeviceType() {
+    var ua = navigator.userAgent;
+    if (/tablet|ipad|playbook|silk/i.test(ua)) return 'tablet';
+    if (/mobile|iphone|ipod|android.*mobile|windows phone|bb\d+|meego.+mobile/i.test(ua)) return 'mobile';
+    return 'desktop';
+  }
+
+  function getBrowser() {
+    var ua = navigator.userAgent;
+    if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1 && ua.indexOf('OPR') === -1) return 'Chrome';
+    if (ua.indexOf('Edg') > -1)     return 'Edge';
+    if (ua.indexOf('Firefox') > -1) return 'Firefox';
+    if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) return 'Safari';
+    if (ua.indexOf('OPR') > -1)     return 'Opera';
+    return 'Other';
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Scroll depth tracker ─────────────────────────────────────────────────
+  var maxScroll = 0;
+  var scrollTimer = null;
+  function onScroll() {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(function () {
+      var docH = Math.max(
+        document.body.scrollHeight, document.documentElement.scrollHeight,
+        document.body.offsetHeight, document.documentElement.offsetHeight
+      );
+      var scrolled = window.scrollY + window.innerHeight;
+      var pct = Math.round((scrolled / docH) * 100);
+      if (pct > maxScroll) maxScroll = Math.min(pct, 100);
+    }, SCROLL_DEBOUNCE_MS);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Variant change detection ─────────────────────────────────────────────
+  var selectedVariantId = PRODUCT.variant_id;
+  var variantChanges = 0;
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (el && (el.name === 'id' || el.dataset.variantId)) {
+      var newId = el.value || el.dataset.variantId;
+      if (newId && newId !== String(selectedVariantId)) {
+        selectedVariantId = newId;
+        variantChanges++;
+      }
+    }
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Add-to-cart detection ────────────────────────────────────────────────
+  var addedToCart = false;
+  document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest
+      ? e.target.closest('[name="add"], [data-add-to-cart], .btn-addtocart, #AddToCart, .product-form__cart-submit')
+      : null;
+    if (el) addedToCart = true;
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Core send function ───────────────────────────────────────────────────
+  var pageLoadTime = Date.now();
+  var lastHeartbeat = 0;
+
+  function buildPayload(eventType) {
+    var utm = parseUTM();
+    return {
+      event:          eventType,
+      ts:             new Date().toISOString(),
+      time_on_page_s: Math.round((Date.now() - pageLoadTime) / 1000),
+      scroll_depth:   maxScroll,
+      added_to_cart:  addedToCart,
+      variant_changes: variantChanges,
+
+      // visitor
+      session_id:   getSessionId(),
+      visitor_id:   getVisitorId(),
+      new_visitor:  isNewVisitor(),
+
+      // traffic
+      referrer:     document.referrer || '',
+      referrer_source: getReferrerSource(),
+      landing_url:  window.location.href,
+      utm_source:   utm.utm_source   || '',
+      utm_medium:   utm.utm_medium   || '',
+      utm_campaign: utm.utm_campaign || '',
+      utm_content:  utm.utm_content  || '',
+      utm_term:     utm.utm_term     || '',
+
+      // device
+      device:       getDeviceType(),
+      browser:      getBrowser(),
+      screen_w:     window.screen.width,
+      screen_h:     window.screen.height,
+      lang:         navigator.language || '',
+      tz:           Intl && Intl.DateTimeFormat
+                      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                      : '',
+
+      // product
+      product_id:       PRODUCT.id,
+      product_handle:   PRODUCT.handle,
+      product_title:    PRODUCT.title,
+      product_vendor:   PRODUCT.vendor,
+      product_type:     PRODUCT.type,
+      product_price:    PRODUCT.price,
+      variant_id:       selectedVariantId || PRODUCT.variant_id,
+      variant_title:    PRODUCT.variant_title,
+      product_available: PRODUCT.available,
+      product_tags:     PRODUCT.tags,
+      product_url:      PRODUCT.url
+    };
+  }
+
+  function send(eventType, callback) {
+    var payload = buildPayload(eventType);
+    // Primary: fetch (keeps page open with keepalive)
+    if (window.fetch) {
+      fetch(ENDPOINT, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+        keepalive: true
+      }).then(function () {
+        if (callback) callback();
+      }).catch(function (err) {
+        console.warn('[tracker] fetch failed, falling back to beacon', err);
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(ENDPOINT, JSON.stringify(payload));
+        }
+        if (callback) callback();
+      });
+    } else if (navigator.sendBeacon) {
+      // Fallback: sendBeacon (fires even on page unload)
+      navigator.sendBeacon(ENDPOINT, JSON.stringify(payload));
+      if (callback) callback();
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Fire events ──────────────────────────────────────────────────────────
+
+  // 1. Page view — fired immediately
+  send('page_view');
+
+  // 2. Heartbeat — fires every 15 s while tab is visible
+  setInterval(function () {
+    if (!document.hidden) {
+      var now = Date.now();
+      if (now - lastHeartbeat >= TIME_ON_PAGE_INTERVAL_MS) {
+        lastHeartbeat = now;
+        send('heartbeat');
+      }
+    }
+  }, TIME_ON_PAGE_INTERVAL_MS);
+
+  // 3. Page exit (beforeunload + visibilitychange for mobile)
+  var exitSent = false;
+  function sendExit() {
+    if (exitSent) return;
+    exitSent = true;
+    send('page_exit');
+  }
+  window.addEventListener('beforeunload', sendExit);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) sendExit();
+  });
+
+})();
+</script>

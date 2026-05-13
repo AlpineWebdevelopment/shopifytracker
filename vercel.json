@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/api/track",  "destination": "/api/track.js"  },
+    { "source": "/api/events", "destination": "/api/events.js" },
+    { "source": "/api/stats",  "destination": "/api/stats.js"  }
+  ]
+}

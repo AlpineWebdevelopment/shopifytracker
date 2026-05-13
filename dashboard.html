@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDP Tracker — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --card:    #222535;
+    --border:  #2e3248;
+    --accent:  #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --text:    #e8eaf0;
+    --muted:   #7b80a0;
+    --green:   #22c55e;
+    --orange:  #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
+
+  /* ── Layout ── */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border);
+            padding: 16px 28px; display: flex; align-items: center; gap: 14px; }
+  .topbar h1 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+  .topbar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green);
+                 box-shadow: 0 0 6px var(--green); }
+  .topbar .badge { margin-left: auto; font-size: 11px; color: var(--muted); background: var(--card);
+                   border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; }
+  .topbar .refresh-btn { cursor: pointer; background: var(--accent); color: #fff; border: none;
+                          border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; }
+  .topbar .refresh-btn:hover { opacity: .85; }
+
+  main { padding: 28px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── KPI row ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+         padding: 20px; position: relative; overflow: hidden; }
+  .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
+  .kpi.green::before { background: var(--green); }
+  .kpi.orange::before { background: var(--orange); }
+  .kpi.red::before { background: var(--accent3); }
+  .kpi.teal::before { background: var(--accent2); }
+  .kpi label { display: block; font-size: 11px; color: var(--muted); font-weight: 600;
+               text-transform: uppercase; letter-spacing: .7px; margin-bottom: 8px; }
+  .kpi .val { font-size: 32px; font-weight: 800; line-height: 1; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* ── Charts grid ── */
+  .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
+  .charts-grid .full { grid-column: 1 / -1; }
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+  .panel h2 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+              letter-spacing: .7px; margin-bottom: 18px; }
+
+  /* ── Table ── */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 600;
+       text-transform: uppercase; letter-spacing: .6px; padding: 8px 12px;
+       border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface); }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px;
+          font-weight: 700; background: rgba(108,99,255,.18); color: var(--accent); }
+  .pill.green { background: rgba(34,197,94,.15); color: var(--green); }
+  .pill.orange { background: rgba(245,158,11,.15); color: var(--orange); }
+
+  /* ── Source bar ── */
+  .src-list { display: flex; flex-direction: column; gap: 10px; }
+  .src-item { display: flex; align-items: center; gap: 10px; }
+  .src-item .name { min-width: 110px; font-size: 12px; color: var(--text); overflow: hidden;
+                    text-overflow: ellipsis; white-space: nowrap; }
+  .src-item .bar-track { flex: 1; background: var(--border); border-radius: 4px; height: 8px; }
+  .src-item .bar-fill  { height: 8px; border-radius: 4px; background: var(--accent);
+                         transition: width .4s ease; }
+  .src-item .count { font-size: 12px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  /* ── Events feed ── */
+  .feed { max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .feed::-webkit-scrollbar { width: 4px; }
+  .feed::-webkit-scrollbar-track { background: transparent; }
+  .feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .ev { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+        padding: 9px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ev .etype { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
+               background: rgba(108,99,255,.2); color: var(--accent); }
+  .ev .etype.exit { background: rgba(255,107,107,.15); color: var(--accent3); }
+  .ev .etype.heartbeat { background: rgba(0,212,170,.12); color: var(--accent2); }
+  .ev .etype.atc { background: rgba(34,197,94,.15); color: var(--green); }
+  .ev .eprod { font-size: 12px; font-weight: 600; }
+  .ev .emeta { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .ev .badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--card);
+               border: 1px solid var(--border); color: var(--muted); }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty .icon { font-size: 48px; margin-bottom: 14px; }
+  .empty p { font-size: 15px; }
+  .empty code { display: inline-block; margin-top: 10px; background: var(--surface);
+                border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px;
+                font-size: 13px; color: var(--accent2); }
+
+  /* ── Canvas containers ── */
+  .chart-box { position: relative; height: 220px; }
+  .chart-box.sm { height: 200px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="dot"></div>
+  <h1>PDP Tracker Dashboard</h1>
+  <span id="last-updated" class="badge">–</span>
+  <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+</div>
+
+<main>
+
+  <!-- KPI row -->
+  <div class="kpi-row">
+    <div class="kpi green">
+      <label>Page Views</label>
+      <div class="val" id="kpi-pv">–</div>
+      <div class="sub">total PDP page_view events</div>
+    </div>
+    <div class="kpi teal">
+      <label>Unique Sessions</label>
+      <div class="val" id="kpi-sess">–</div>
+      <div class="sub">distinct session IDs</div>
+    </div>
+    <div class="kpi">
+      <label>Unique Visitors</label>
+      <div class="val" id="kpi-vis">–</div>
+      <div class="sub">distinct visitor IDs (localStorage)</div>
+    </div>
+    <div class="kpi orange">
+      <label>Add to Cart</label>
+      <div class="val" id="kpi-atc">–</div>
+      <div class="sub">clicks detected on ATC button</div>
+    </div>
+    <div class="kpi red">
+      <label>Total Events</label>
+      <div class="val" id="kpi-total">–</div>
+      <div class="sub">views + heartbeats + exits</div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="charts-grid">
+
+    <!-- Daily views chart -->
+    <div class="panel">
+      <h2>Daily Page Views</h2>
+      <div class="chart-box">
+        <canvas id="chartDates"></canvas>
+      </div>
+    </div>
+
+    <!-- Device doughnut -->
+    <div class="panel">
+      <h2>Device Breakdown</h2>
+      <div class="chart-box sm">
+        <canvas id="chartDevice"></canvas>
+      </div>
+    </div>
+
+    <!-- Browser doughnut -->
+    <div class="panel">
+      <h2>Browser Breakdown</h2>
+      <div class="chart-box sm">
+        <canvas id="chartBrowser"></canvas>
+      </div>
+    </div>
+
+    <!-- Traffic sources -->
+    <div class="panel">
+      <h2>Traffic Sources</h2>
+      <div class="src-list" id="src-list">
+        <div class="empty" style="padding:20px 0"><div class="icon">📡</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Product table -->
+  <div class="panel" style="margin-bottom:28px">
+    <h2>Products Performance</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Views</th>
+            <th>Unique Sessions</th>
+            <th>Add to Cart</th>
+            <th>ATC Rate</th>
+            <th>Vendor</th>
+          </tr>
+        </thead>
+        <tbody id="product-table">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No data yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Live event feed -->
+  <div class="panel">
+    <h2>Live Event Feed <span style="color:var(--muted);font-size:11px;font-weight:400">(latest 50)</span></h2>
+    <div class="feed" id="event-feed">
+      <div class="empty">
+        <div class="icon">📭</div>
+        <p>No events received yet.</p>
+        <code>node server.js</code>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── Chart instances ──────────────────────────────────────────────────────────
+let chartDates   = null;
+let chartDevice  = null;
+let chartBrowser = null;
+
+const PALETTE = ['#6c63ff','#00d4aa','#ff6b6b','#f59e0b','#3b82f6','#a855f7','#ec4899'];
+
+function buildOrUpdate(ref, canvasId, type, labels, datasets, options) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if (ref) { ref.destroy(); }
+  return new Chart(ctx, { type, data: { labels, datasets }, options });
+}
+
+// ── Fetch & render ───────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const [statsRes, eventsRes] = await Promise.all([
+      fetch('/stats'),
+      fetch('/events')
+    ]);
+    if (!statsRes.ok || !eventsRes.ok) throw new Error('Server error');
+    const stats  = await statsRes.json();
+    const events = await eventsRes.json();
+
+    renderKPIs(stats);
+    renderDates(stats.by_date);
+    renderDevice(stats.by_device);
+    renderBrowser(stats.by_browser);
+    renderSources(stats.by_source, stats.total_pageviews);
+    renderProducts(stats.by_product);
+    renderFeed(events);
+
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    console.error('Dashboard load error:', err);
+    document.getElementById('last-updated').textContent = '⚠ Could not reach server';
+  }
+}
+
+function renderKPIs(s) {
+  document.getElementById('kpi-pv').textContent    = fmt(s.total_pageviews);
+  document.getElementById('kpi-sess').textContent  = fmt(s.unique_sessions);
+  document.getElementById('kpi-vis').textContent   = fmt(s.unique_visitors);
+  document.getElementById('kpi-atc').textContent   = fmt(s.add_to_cart);
+  document.getElementById('kpi-total').textContent = fmt(s.total_events);
+}
+
+function renderDates(byDate) {
+  const sorted = Object.entries(byDate).sort((a, b) => a[0].localeCompare(b[0]));
+  const labels = sorted.map(x => x[0]);
+  const data   = sorted.map(x => x[1]);
+
+  chartDates = buildOrUpdate(chartDates, 'chartDates', 'bar', labels, [{
+    label: 'Page Views',
+    data,
+    backgroundColor: 'rgba(108,99,255,0.55)',
+    borderColor: '#6c63ff',
+    borderWidth: 2,
+    borderRadius: 5,
+    hoverBackgroundColor: '#6c63ff'
+  }], {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#7b80a0', font: { size: 11 } }, grid: { color: '#2e3248' } },
+      y: { ticks: { color: '#7b80a0', font: { size: 11 } }, grid: { color: '#2e3248' }, beginAtZero: true }
+    }
+  });
+}
+
+function renderDevice(byDevice) {
+  const labels = Object.keys(byDevice);
+  const data   = Object.values(byDevice);
+  chartDevice = buildOrUpdate(chartDevice, 'chartDevice', 'doughnut', labels, [{
+    data, backgroundColor: ['#6c63ff','#00d4aa','#f59e0b'], borderWidth: 0, hoverOffset: 6
+  }], {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#7b80a0', font: { size: 11 }, boxWidth: 12, padding: 14 } }
+    }
+  });
+}
+
+function renderBrowser(byBrowser) {
+  const labels = Object.keys(byBrowser);
+  const data   = Object.values(byBrowser);
+  chartBrowser = buildOrUpdate(chartBrowser, 'chartBrowser', 'doughnut', labels, [{
+    data, backgroundColor: PALETTE, borderWidth: 0, hoverOffset: 6
+  }], {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#7b80a0', font: { size: 11 }, boxWidth: 12, padding: 12 } }
+    }
+  });
+}
+
+function renderSources(bySource, total) {
+  const sorted = Object.entries(bySource).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const max    = sorted[0] ? sorted[0][1] : 1;
+  const el = document.getElementById('src-list');
+  if (!sorted.length) { el.innerHTML = '<div class="empty" style="padding:20px 0"><div class="icon">📡</div><p>No source data</p></div>'; return; }
+  el.innerHTML = sorted.map(([src, cnt]) => `
+    <div class="src-item">
+      <span class="name" title="${esc(src)}">${esc(src)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round((cnt/max)*100)}%"></div></div>
+      <span class="count">${cnt}</span>
+    </div>`).join('');
+}
+
+function renderProducts(products) {
+  const tbody = document.getElementById('product-table');
+  if (!products || !products.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No product data yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = products.map(p => `
+    <tr>
+      <td><strong>${esc(p.title || 'Unknown')}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(String(p.product_id))}</span></td>
+      <td><span class="pill">${fmt(p.views)}</span></td>
+      <td>${fmt(p.sessions)}</td>
+      <td>${fmt(p.atc)}</td>
+      <td><span class="pill ${parseFloat(p.atc_rate) > 5 ? 'green' : 'orange'}">${esc(p.atc_rate)}</span></td>
+      <td style="color:var(--muted)">${esc(p.vendor || '–')}</td>
+    </tr>`).join('');
+}
+
+function renderFeed(events) {
+  const el = document.getElementById('event-feed');
+  if (!events || !events.length) return;
+  const recent = [...events].reverse().slice(0, 50);
+  el.innerHTML = recent.map(e => {
+    const typeClass = e.event === 'page_exit' ? 'exit'
+                    : e.event === 'heartbeat'  ? 'heartbeat'
+                    : e.added_to_cart          ? 'atc'
+                    : '';
+    const label = e.added_to_cart && e.event === 'page_view' ? '🛒 page_view+ATC' : esc(e.event);
+    const time  = e.ts ? new Date(e.ts).toLocaleTimeString() : '–';
+    const scroll = e.scroll_depth != null ? `scroll ${e.scroll_depth}%` : '';
+    const tos    = e.time_on_page_s != null ? `${e.time_on_page_s}s on page` : '';
+    return `
+      <div class="ev">
+        <span class="etype ${typeClass}">${label}</span>
+        <span class="eprod">${esc(e.product_title || e.product_handle || String(e.product_id || ''))}</span>
+        ${e.device ? `<span class="badge">${esc(e.device)}</span>` : ''}
+        ${e.browser ? `<span class="badge">${esc(e.browser)}</span>` : ''}
+        ${scroll ? `<span class="badge">${scroll}</span>` : ''}
+        ${tos    ? `<span class="badge">${tos}</span>` : ''}
+        <span class="emeta">${time}</span>
+      </div>`;
+  }).join('');
+}
+
+// ── Utils ────────────────────────────────────────────────────────────────────
+function fmt(n) { return n == null ? '–' : Number(n).toLocaleString(); }
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Auto-refresh every 15 s ──────────────────────────────────────────────────
+loadData();
+setInterval(loadData, 15000);
+</script>
+</body>
+</html>
