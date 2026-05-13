@@ -15,6 +15,7 @@ module.exports = async function handler(req, res) {
     const rows = await r.json();
     const events = rows.map(row => ({ ...row.data, _db_ts: row.created_at }));
     const pageViews = events.filter(e => e.event === 'page_view');
+    const atcEvents = events.filter(e => e.event === 'add_to_cart');
 
     const byProduct = {};
     const byDate    = {};
@@ -23,13 +24,19 @@ module.exports = async function handler(req, res) {
     const bySource  = {};
     const sessions  = new Set();
     const visitors  = new Set();
-    let   atcCount  = 0;
+    let   atcCount  = atcEvents.length;
+
+    // seed ATC counts per product from dedicated add_to_cart events
+    for (const e of atcEvents) {
+      const pid = String(e.product_id || 'unknown');
+      if (!byProduct[pid]) byProduct[pid] = { title: e.product_title, vendor: e.product_vendor, views: 0, atc: 0, sessions: new Set() };
+      byProduct[pid].atc++;
+    }
 
     for (const e of pageViews) {
       const pid = String(e.product_id || 'unknown');
       if (!byProduct[pid]) byProduct[pid] = { title: e.product_title, vendor: e.product_vendor, views: 0, atc: 0, sessions: new Set() };
       byProduct[pid].views++;
-      if (e.added_to_cart) { byProduct[pid].atc++; atcCount++; }
       byProduct[pid].sessions.add(e.session_id);
 
       const day = (e.ts || e._db_ts || '').slice(0, 10);
