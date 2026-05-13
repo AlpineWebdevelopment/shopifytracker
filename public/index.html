@@ -108,6 +108,15 @@
                 border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px;
                 font-size: 13px; color: var(--accent2); }
 
+  /* ── Funnel ── */
+  .funnel-step { flex:1; background: var(--surface); border: 1px solid var(--border);
+                 border-radius: 10px; padding: 16px 12px; text-align: center; min-width: 110px; }
+  .funnel-step .f-label { font-size: 11px; color: var(--muted); font-weight: 600;
+                           text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+  .funnel-step .f-val   { font-size: 26px; font-weight: 800; }
+  .funnel-step .f-rate  { font-size: 12px; color: var(--accent2); margin-top: 4px; font-weight: 600; }
+  .funnel-arrow { display: flex; align-items: center; padding: 0 8px; color: var(--muted); font-size: 20px; }
+
   /* ── Canvas containers ── */
   .chart-box { position: relative; height: 220px; }
   .chart-box.sm { height: 200px; }
@@ -129,27 +138,51 @@
     <div class="kpi green">
       <label>Page Views</label>
       <div class="val" id="kpi-pv">–</div>
-      <div class="sub">total PDP page_view events</div>
+      <div class="sub">PDP visits</div>
     </div>
     <div class="kpi teal">
       <label>Unique Sessions</label>
       <div class="val" id="kpi-sess">–</div>
-      <div class="sub">distinct session IDs</div>
+      <div class="sub">distinct sessions</div>
     </div>
     <div class="kpi">
       <label>Unique Visitors</label>
       <div class="val" id="kpi-vis">–</div>
-      <div class="sub">distinct visitor IDs (localStorage)</div>
+      <div class="sub">distinct visitors</div>
     </div>
     <div class="kpi orange">
       <label>Add to Cart</label>
       <div class="val" id="kpi-atc">–</div>
-      <div class="sub">clicks detected on ATC button</div>
+      <div class="sub">ATC button clicks</div>
+    </div>
+    <div class="kpi" style="--c:var(--accent2)">
+      <label>Checkout Started</label>
+      <div class="val" id="kpi-checkout">–</div>
+      <div class="sub">proceeded to checkout</div>
+    </div>
+    <div class="kpi" style="--c:var(--green)">
+      <label>Purchases</label>
+      <div class="val" id="kpi-purchase">–</div>
+      <div class="sub">order confirmations</div>
     </div>
     <div class="kpi red">
       <label>Total Events</label>
       <div class="val" id="kpi-total">–</div>
-      <div class="sub">views + heartbeats + exits</div>
+      <div class="sub">all tracked events</div>
+    </div>
+  </div>
+
+  <!-- Funnel -->
+  <div class="panel" style="margin-bottom:28px">
+    <h2>Conversion Funnel</h2>
+    <div style="display:flex;gap:0;align-items:stretch;overflow-x:auto">
+      <div class="funnel-step" id="fn-pv"></div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step" id="fn-atc"></div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step" id="fn-co"></div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step" id="fn-pur"></div>
     </div>
   </div>
 
@@ -268,11 +301,20 @@ async function loadData() {
 }
 
 function renderKPIs(s) {
-  document.getElementById('kpi-pv').textContent    = fmt(s.total_pageviews);
-  document.getElementById('kpi-sess').textContent  = fmt(s.unique_sessions);
-  document.getElementById('kpi-vis').textContent   = fmt(s.unique_visitors);
-  document.getElementById('kpi-atc').textContent   = fmt(s.add_to_cart);
-  document.getElementById('kpi-total').textContent = fmt(s.total_events);
+  document.getElementById('kpi-pv').textContent       = fmt(s.total_pageviews);
+  document.getElementById('kpi-sess').textContent     = fmt(s.unique_sessions);
+  document.getElementById('kpi-vis').textContent      = fmt(s.unique_visitors);
+  document.getElementById('kpi-atc').textContent      = fmt(s.add_to_cart);
+  document.getElementById('kpi-checkout').textContent = fmt(s.checkout_started);
+  document.getElementById('kpi-purchase').textContent = fmt(s.purchases);
+  document.getElementById('kpi-total').textContent    = fmt(s.total_events);
+
+  // Funnel
+  const f = s.funnel || {};
+  document.getElementById('fn-pv').innerHTML  = `<div class="f-label">PDP Views</div><div class="f-val">${fmt(s.total_pageviews)}</div><div class="f-rate">100%</div>`;
+  document.getElementById('fn-atc').innerHTML = `<div class="f-label">Add to Cart</div><div class="f-val">${fmt(s.add_to_cart)}</div><div class="f-rate">${f.pdp_to_atc||'0%'}</div>`;
+  document.getElementById('fn-co').innerHTML  = `<div class="f-label">Checkout</div><div class="f-val">${fmt(s.checkout_started)}</div><div class="f-rate">${f.atc_to_checkout||'0%'}</div>`;
+  document.getElementById('fn-pur').innerHTML = `<div class="f-label">Purchase</div><div class="f-val">${fmt(s.purchases)}</div><div class="f-rate">${f.checkout_to_purchase||'0%'}</div>`;
 }
 
 function renderDates(byDate) {

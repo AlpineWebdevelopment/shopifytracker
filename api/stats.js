@@ -13,9 +13,11 @@ module.exports = async function handler(req, res) {
       }
     );
     const rows = await r.json();
-    const events = rows.map(row => ({ ...row.data, _db_ts: row.created_at }));
-    const pageViews = events.filter(e => e.event === 'page_view');
-    const atcEvents = events.filter(e => e.event === 'add_to_cart');
+    const events          = rows.map(row => ({ ...row.data, _db_ts: row.created_at }));
+    const pageViews       = events.filter(e => e.event === 'page_view');
+    const atcEvents       = events.filter(e => e.event === 'add_to_cart');
+    const checkoutEvents  = events.filter(e => e.event === 'checkout_started');
+    const purchaseEvents  = events.filter(e => e.event === 'purchase');
 
     const byProduct = {};
     const byDate    = {};
@@ -58,17 +60,30 @@ module.exports = async function handler(req, res) {
       atc_rate: v.views ? ((v.atc / v.views) * 100).toFixed(1) + '%' : '0%',
     })).sort((a, b) => b.views - a.views);
 
+    // funnel conversion rates
+    const pvCount  = pageViews.length;
+    const atcRate  = pvCount  ? ((atcEvents.length  / pvCount)              * 100).toFixed(1) + '%' : '0%';
+    const coRate   = atcEvents.length ? ((checkoutEvents.length / atcEvents.length) * 100).toFixed(1) + '%' : '0%';
+    const purRate  = checkoutEvents.length ? ((purchaseEvents.length / checkoutEvents.length) * 100).toFixed(1) + '%' : '0%';
+
     res.status(200).json({
-      total_events:    events.length,
-      total_pageviews: pageViews.length,
-      unique_sessions: sessions.size,
-      unique_visitors: visitors.size,
-      add_to_cart:     atcCount,
-      by_product:      byProductArr,
-      by_date:         byDate,
-      by_device:       byDevice,
-      by_browser:      byBrowser,
-      by_source:       bySource,
+      total_events:       events.length,
+      total_pageviews:    pvCount,
+      unique_sessions:    sessions.size,
+      unique_visitors:    visitors.size,
+      add_to_cart:        atcEvents.length,
+      checkout_started:   checkoutEvents.length,
+      purchases:          purchaseEvents.length,
+      funnel: {
+        pdp_to_atc:        atcRate,
+        atc_to_checkout:   coRate,
+        checkout_to_purchase: purRate,
+      },
+      by_product:         byProductArr,
+      by_date:            byDate,
+      by_device:          byDevice,
+      by_browser:         byBrowser,
+      by_source:          bySource,
     });
   } catch (err) {
     console.error('[stats]', err.message);
