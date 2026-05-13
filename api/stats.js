@@ -3,8 +3,19 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') { res.status(405).end(); return; }
 
   try {
+    // Optional date-range filter: ?from=2025-01-01&to=2025-01-31
+    const { from, to } = req.query || {};
+    let rangeFilter = '';
+    if (from) rangeFilter += `&created_at=gte.${encodeURIComponent(from)}`;
+    if (to) {
+      // include the full "to" day by bumping to next day
+      const toDate = new Date(to);
+      toDate.setDate(toDate.getDate() + 1);
+      rangeFilter += `&created_at=lt.${encodeURIComponent(toDate.toISOString().slice(0, 10))}`;
+    }
+
     const r = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/events?select=data,created_at&order=created_at.desc&limit=5000`,
+      `${process.env.SUPABASE_URL}/rest/v1/events?select=data,created_at&order=created_at.desc&limit=5000${rangeFilter}`,
       {
         headers: {
           'apikey':        process.env.SUPABASE_ANON_KEY,

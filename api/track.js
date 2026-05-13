@@ -1,3 +1,29 @@
+// Country code → flag emoji
+function flag(cc) {
+  if (!cc || cc.length !== 2) return '🌐';
+  return String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1E0 - 65 + c.charCodeAt(0)));
+}
+
+async function geoLookup(ip) {
+  if (!ip || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip === '::1') return {};
+  try {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 1500);
+    const r    = await fetch(`https://ipwho.is/${ip}`, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!r.ok) return {};
+    const d = await r.json();
+    if (!d.success) return {};
+    return {
+      country:      d.country      || '',
+      country_code: d.country_code || '',
+      city:         d.city         || '',
+      region:       d.region       || '',
+      flag:         flag(d.country_code),
+    };
+  } catch (_) { return {}; }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,6 +41,10 @@ module.exports = async function handler(req, res) {
     const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     event._server_ts = new Date().toISOString();
     event._ip = (req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '').split(',')[0].trim();
+
+    // Geo-enrich (non-blocking — we await but cap at 1.5 s via AbortController)
+    const geo = await geoLookup(event._ip);
+    Object.assign(event, geo);
 
     const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/events`, {
       method:  'POST',

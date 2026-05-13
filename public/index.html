@@ -136,6 +136,27 @@
   .clear-btn { cursor: pointer; background: transparent; color: var(--accent3); border: 1px solid var(--accent3);
                border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; margin-left: 8px; }
   .clear-btn:hover { background: rgba(255,107,107,.1); }
+
+  /* ── Time filter ── */
+  .time-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
+  .time-filter span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase;
+                      letter-spacing: .6px; margin-right: 4px; }
+  .tf-btn { cursor: pointer; background: var(--card); color: var(--muted); border: 1px solid var(--border);
+            border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; transition: all .15s; }
+  .tf-btn:hover { border-color: var(--accent); color: var(--text); }
+  .tf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── Visitor row enhanced ── */
+  .visitor-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+                  padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                  margin-bottom: 8px; }
+  .visitor-card .v-flag { font-size: 20px; line-height: 1; flex-shrink: 0; }
+  .visitor-card .v-loc { font-size: 12px; font-weight: 600; color: var(--text); min-width: 100px; }
+  .visitor-card .v-loc small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
+  .visitor-card .v-prod { font-size: 12px; color: var(--accent2); flex: 1; min-width: 120px;
+                          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .visitor-card .v-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+  .visitor-card .vtime { margin-left: auto; color: var(--muted); white-space: nowrap; font-size: 11px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -149,6 +170,16 @@
 </div>
 
 <main>
+
+  <!-- Time filter bar -->
+  <div class="time-filter">
+    <span>Period:</span>
+    <button class="tf-btn" data-range="today"     onclick="setRange(this)">Today</button>
+    <button class="tf-btn" data-range="yesterday" onclick="setRange(this)">Yesterday</button>
+    <button class="tf-btn" data-range="7d"        onclick="setRange(this)">Last 7 days</button>
+    <button class="tf-btn" data-range="30d"       onclick="setRange(this)">Last 30 days</button>
+    <button class="tf-btn active" data-range="all" onclick="setRange(this)">All time</button>
+  </div>
 
   <!-- Live view -->
   <div class="panel" style="margin-bottom:28px">
@@ -318,6 +349,52 @@ function buildOrUpdate(ref, canvasId, type, labels, datasets, options) {
   return new Chart(ctx, { type, data: { labels, datasets }, options });
 }
 
+// ── Time filter ──────────────────────────────────────────────────────────────
+let activeRange = 'all';
+
+function setRange(btn) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeRange = btn.dataset.range;
+  loadData();
+}
+
+function rangeParams() {
+  const now   = new Date();
+  const pad   = n => String(n).padStart(2,'0');
+  const ymd   = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today = ymd(now);
+  if (activeRange === 'today') {
+    return `from=${today}&to=${today}`;
+  }
+  if (activeRange === 'yesterday') {
+    const y = new Date(now); y.setDate(y.getDate()-1);
+    const s = ymd(y);
+    return `from=${s}&to=${s}`;
+  }
+  if (activeRange === '7d') {
+    const s = new Date(now); s.setDate(s.getDate()-6);
+    return `from=${ymd(s)}&to=${today}`;
+  }
+  if (activeRange === '30d') {
+    const s = new Date(now); s.setDate(s.getDate()-29);
+    return `from=${ymd(s)}&to=${today}`;
+  }
+  return ''; // all time
+}
+
+// ── Relative time helper ─────────────────────────────────────────────────────
+function relTime(ts) {
+  if (!ts) return '–';
+  const sec = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
+  if (sec < 5)   return 'just now';
+  if (sec < 60)  return sec + 's ago';
+  const min = Math.round(sec / 60);
+  if (min < 60)  return min + 'm ago';
+  const hr = Math.round(min / 60);
+  return hr + 'h ago';
+}
+
 // ── Clear all data ───────────────────────────────────────────────────────────
 async function clearData() {
   if (!confirm('Clear ALL tracking data? This cannot be undone.')) return;
@@ -347,15 +424,20 @@ async function loadLive() {
       return;
     }
     feed.innerHTML = data.recent_visitors.map(v => {
-      const mins = Math.round((Date.now() - new Date(v.ts).getTime()) / 60000);
-      const when = mins < 1 ? 'just now' : mins + 'm ago';
-      const src  = v.referrer_source || 'direct';
-      return `<div class="visitor-row">
-        <span class="badge">${esc(v.device||'?')}</span>
-        <span class="badge">${esc(v.browser||'?')}</span>
-        <span style="color:var(--text);font-size:12px">${esc(v.product_title || v.landing_url || '–')}</span>
-        <span class="badge" style="color:var(--accent2)">${esc(src)}</span>
-        <span class="vtime">${when}</span>
+      const src     = v.referrer_source || 'direct';
+      const locLine = v.city ? `${v.city}, ${v.country}` : (v.country || 'Unknown');
+      const flagStr = v.flag || '🌐';
+      const prod    = v.product_title || v.landing_url || '–';
+      return `<div class="visitor-card">
+        <span class="v-flag">${flagStr}</span>
+        <div class="v-loc">${esc(locLine)}<small>${esc(v.region||'')}</small></div>
+        <span class="v-prod" title="${esc(prod)}">${esc(prod)}</span>
+        <div class="v-badges">
+          <span class="badge">${esc(v.device||'?')}</span>
+          <span class="badge">${esc(v.browser||'?')}</span>
+          <span class="badge" style="color:var(--accent2)">${esc(src)}</span>
+        </div>
+        <span class="vtime">${relTime(v.ts)}</span>
       </div>`;
     }).join('');
   } catch(e) { console.error('[live]', e); }
@@ -364,8 +446,10 @@ async function loadLive() {
 // ── Fetch & render ───────────────────────────────────────────────────────────
 async function loadData() {
   try {
+    const qs = rangeParams();
+    const statsUrl = qs ? `/api/stats?${qs}` : '/api/stats';
     const [statsRes, eventsRes] = await Promise.all([
-      fetch('/api/stats'),
+      fetch(statsUrl),
       fetch('/api/events')
     ]);
     if (!statsRes.ok || !eventsRes.ok) throw new Error('Server error');

@@ -57,6 +57,11 @@ module.exports = async function handler(req, res) {
         landing_url:   e.landing_url,
         product_title: e.product_title,
         ts:            e._db_ts || e.ts,
+        country:       e.country      || '',
+        country_code:  e.country_code || '',
+        city:          e.city         || '',
+        region:        e.region       || '',
+        flag:          e.flag         || '🌐',
       }));
 
     res.status(200).json({
