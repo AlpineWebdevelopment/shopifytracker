@@ -6,6 +6,11 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST')    { res.status(405).json({ error: 'Method not allowed' }); return; }
 
+  // Guard: check env vars are present
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    return res.status(500).json({ ok: false, error: 'Missing SUPABASE_URL or SUPABASE_ANON_KEY env vars' });
+  }
+
   try {
     const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     event._server_ts = new Date().toISOString();
