@@ -1,4 +1,4 @@
-import fs from 'fs';
+const fs = require('fs');
 
 const FILE = '/tmp/events.json';
 
@@ -10,7 +10,7 @@ function loadEvents() {
   } catch { return []; }
 }
 
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method !== 'GET') { res.status(405).end(); return; }
 
@@ -36,8 +36,8 @@ export default function handler(req, res) {
     const day = (e.ts || e._server_ts || '').slice(0, 10);
     byDate[day] = (byDate[day] || 0) + 1;
 
-    if (e.device)  byDevice[e.device]   = (byDevice[e.device]  || 0) + 1;
-    if (e.browser) byBrowser[e.browser] = (byBrowser[e.browser]|| 0) + 1;
+    if (e.device)  byDevice[e.device]    = (byDevice[e.device]   || 0) + 1;
+    if (e.browser) byBrowser[e.browser]  = (byBrowser[e.browser] || 0) + 1;
 
     const src = e.utm_source || e.referrer_source || 'direct';
     bySource[src] = (bySource[src] || 0) + 1;
@@ -64,4 +64,4 @@ export default function handler(req, res) {
     by_browser:      byBrowser,
     by_source:       bySource,
   });
-}
+};

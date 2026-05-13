@@ -2,10 +2,6 @@
   "name": "shopify-pdp-tracker",
   "version": "1.0.0",
   "description": "Custom visitor tracking for Shopify PDP — Vercel serverless",
-  "type": "module",
-  "scripts": {
-    "start": "node server.js"
-  },
   "engines": {
     "node": ">=18"
   }

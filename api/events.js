@@ -1,4 +1,4 @@
-import fs from 'fs';
+const fs = require('fs');
 
 const FILE = '/tmp/events.json';
 
@@ -10,10 +10,8 @@ function loadEvents() {
   } catch { return []; }
 }
 
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method !== 'GET') { res.status(405).end(); return; }
-
-  const events = loadEvents();
-  res.status(200).json(events);
-}
+  res.status(200).json(loadEvents());
+};

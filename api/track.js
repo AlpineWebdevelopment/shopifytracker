@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
 
 const FILE = '/tmp/events.json';
 
@@ -29,7 +28,7 @@ function saveEvents(events) {
   fs.writeFileSync(FILE, JSON.stringify(events), 'utf8');
 }
 
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
   setCORS(req, res);
 
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
@@ -42,7 +41,7 @@ export default function handler(req, res) {
     event._ip = (req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '').split(',')[0].trim();
 
     const events = loadEvents();
-    events.unshift(event);               // newest first
+    events.unshift(event);
     if (events.length > 500) events.length = 500;
     saveEvents(events);
 
@@ -51,4 +50,4 @@ export default function handler(req, res) {
     console.error('[track]', err.message);
     res.status(400).json({ ok: false, error: err.message });
   }
-}
+};
