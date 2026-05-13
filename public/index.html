@@ -244,8 +244,8 @@ function buildOrUpdate(ref, canvasId, type, labels, datasets, options) {
 async function loadData() {
   try {
     const [statsRes, eventsRes] = await Promise.all([
-      fetch('/stats'),
-      fetch('/events')
+      fetch('/api/stats'),
+      fetch('/api/events')
     ]);
     if (!statsRes.ok || !eventsRes.ok) throw new Error('Server error');
     const stats  = await statsRes.json();
