@@ -2,18 +2,10 @@ const fs = require('fs');
 
 const FILE = '/tmp/events.json';
 
-const ALLOWED_ORIGINS = [
-  'https://mirathelle.com',
-  'https://www.mirathelle.com',
-];
-
 function setCORS(req, res) {
-  const origin  = req.headers.origin || '';
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  res.setHeader('Access-Control-Allow-Origin',  allowed);
+  res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Vary', 'Origin');
 }
 
 function loadEvents() {
