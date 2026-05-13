@@ -42,6 +42,10 @@ module.exports = async function handler(req, res) {
     event._server_ts = new Date().toISOString();
     event._ip = (req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '').split(',')[0].trim();
 
+    // Flag internal / known IPs (set INTERNAL_IPS env var as comma-separated list)
+    const internalIPs = (process.env.INTERNAL_IPS || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (internalIPs.includes(event._ip)) event._internal = true;
+
     // Geo-enrich (non-blocking — we await but cap at 1.5 s via AbortController)
     const geo = await geoLookup(event._ip);
     Object.assign(event, geo);

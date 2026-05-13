@@ -427,11 +427,12 @@ async function loadLive() {
       const locLine = v.city ? `${v.city}, ${v.country}` : (v.country || 'Unknown');
       const flagStr = v.flag || '🌐';
       const prod    = v.product_title || v.landing_url || '–';
-      return `<div class="visitor-card">
+      return `<div class="visitor-card" ${v._internal ? 'style="opacity:.55;border-color:#f59e0b"' : ''}>
         <span class="v-flag">${flagStr}</span>
         <div class="v-loc">${esc(locLine)}<small>${esc(v.region||'')}</small></div>
         <span class="v-prod" title="${esc(prod)}">${esc(prod)}</span>
         <div class="v-badges">
+          ${v._internal ? '<span class="badge" style="color:#f59e0b;border-color:#f59e0b">🏠 Internal</span>' : ''}
           <span class="badge">${esc(v.device||'?')}</span>
           <span class="badge">${esc(v.browser||'?')}</span>
           ${/facebook/i.test(src) ? `<span class="badge" style="display:inline-flex;align-items:center;gap:4px;color:#1877F2"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.413c0-3.025 1.791-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.885v2.266h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>Facebook</span>` : `<span class="badge" style="color:var(--accent2)">${esc(src)}</span>`}
@@ -583,7 +584,8 @@ function renderFeed(events) {
     const scroll = e.scroll_depth != null ? `scroll ${e.scroll_depth}%` : '';
     const tos    = e.time_on_page_s != null ? `${e.time_on_page_s}s on page` : '';
     return `
-      <div class="ev">
+      <div class="ev" ${e._internal ? 'style="opacity:.5;border-color:#f59e0b"' : ''}>
+        ${e._internal ? '<span class="badge" style="color:#f59e0b;border-color:#f59e0b">🏠</span>' : ''}
         <span class="etype ${typeClass}">${label}</span>
         <span class="eprod">${esc(e.product_title || e.product_handle || String(e.product_id || ''))}</span>
         ${e.device ? `<span class="badge">${esc(e.device)}</span>` : ''}

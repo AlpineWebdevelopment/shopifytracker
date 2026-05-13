@@ -62,6 +62,7 @@ module.exports = async function handler(req, res) {
         city:          e.city         || '',
         region:        e.region       || '',
         flag:          e.flag         || '🌐',
+        _internal:     e._internal    || false,
       }));
 
     res.status(200).json({
