@@ -133,9 +133,12 @@
   .visitor-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .visitor-row:last-child { border-bottom: none; }
   .visitor-row .vtime { margin-left: auto; color: var(--muted); white-space: nowrap; font-size: 11px; }
-  .clear-btn { cursor: pointer; background: transparent; color: var(--accent3); border: 1px solid var(--accent3);
-               border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; margin-left: 8px; }
-  .clear-btn:hover { background: rgba(255,107,107,.1); }
+  .internal-btn { cursor: pointer; background: transparent; color: var(--muted); border: 1px solid var(--border);
+                  border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; margin-left: 8px;
+                  transition: all .15s; }
+  .internal-btn:hover { border-color: var(--orange); color: var(--orange); }
+  .internal-btn.on { background: rgba(245,158,11,.15); color: var(--orange); border-color: var(--orange);
+                     box-shadow: 0 0 8px rgba(245,158,11,.3); }
 
   /* ── Time filter ── */
   .time-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
@@ -166,6 +169,7 @@
   <h1>PDP Tracker Dashboard</h1>
   <span id="last-updated" class="badge">–</span>
   <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  <button id="internal-btn" class="internal-btn" onclick="toggleInternal()" title="Show/hide your own visits">🏠 Internal</button>
 </div>
 
 <main>
@@ -349,7 +353,16 @@ function buildOrUpdate(ref, canvasId, type, labels, datasets, options) {
 }
 
 // ── Time filter ──────────────────────────────────────────────────────────────
-let activeRange = 'today';
+let activeRange      = 'today';
+let showInternal     = false;
+
+function toggleInternal() {
+  showInternal = !showInternal;
+  const btn = document.getElementById('internal-btn');
+  btn.classList.toggle('on', showInternal);
+  loadData();
+  loadLive();
+}
 
 function setRange(btn) {
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
@@ -409,7 +422,7 @@ async function clearData() {
 // ── Live view ────────────────────────────────────────────────────────────────
 async function loadLive() {
   try {
-    const r    = await fetch('/api/live');
+    const r    = await fetch('/api/live' + (showInternal ? '?internal=1' : ''));
     const data = await r.json();
 
     document.getElementById('live-visitors').textContent = fmt(data.visitors_last_5m);
@@ -447,7 +460,9 @@ async function loadLive() {
 async function loadData() {
   try {
     const qs = rangeParams();
-    const statsUrl = qs ? `/api/stats?${qs}` : '/api/stats';
+    const internalQs = showInternal ? 'internal=1' : '';
+    const combined = [qs, internalQs].filter(Boolean).join('&');
+    const statsUrl = combined ? `/api/stats?${combined}` : '/api/stats';
     const [statsRes, eventsRes] = await Promise.all([
       fetch(statsUrl),
       fetch('/api/events')

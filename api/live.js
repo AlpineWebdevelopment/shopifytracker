@@ -19,7 +19,8 @@ module.exports = async function handler(req, res) {
       }
     );
     const rows   = await r.json();
-    const events = rows.map(row => ({ ...row.data, _db_ts: row.created_at })).filter(e => !e._internal);
+    const includeInternal = req.query.internal === '1';
+    const events = rows.map(row => ({ ...row.data, _db_ts: row.created_at })).filter(e => includeInternal || !e._internal);
 
     // helpers
     function since(events, iso) {
