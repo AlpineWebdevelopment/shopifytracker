@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
       }
     );
     const rows   = await r.json();
-    const events = rows.map(row => ({ ...row.data, _db_ts: row.created_at }));
+    const events = rows.map(row => ({ ...row.data, _db_ts: row.created_at })).filter(e => !e._internal);
 
     // helpers
     function since(events, iso) {

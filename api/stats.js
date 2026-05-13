@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
       }
     );
     const rows = await r.json();
-    const events          = rows.map(row => ({ ...row.data, _db_ts: row.created_at }));
+    const events          = rows.map(row => ({ ...row.data, _db_ts: row.created_at })).filter(e => !e._internal);
     const pageViews       = events.filter(e => e.event === 'page_view');
     const atcEvents       = events.filter(e => e.event === 'add_to_cart');
     const checkoutEvents  = events.filter(e => e.event === 'checkout_started');
