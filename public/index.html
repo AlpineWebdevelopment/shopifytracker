@@ -133,6 +133,9 @@
   .visitor-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .visitor-row:last-child { border-bottom: none; }
   .visitor-row .vtime { margin-left: auto; color: var(--muted); white-space: nowrap; font-size: 11px; }
+  .clear-btn { cursor: pointer; background: transparent; color: var(--accent3); border: 1px solid var(--accent3);
+               border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; margin-left: 8px; }
+  .clear-btn:hover { background: rgba(255,107,107,.1); }
   .internal-btn { cursor: pointer; background: transparent; color: var(--muted); border: 1px solid var(--border);
                   border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; margin-left: 8px;
                   transition: all .15s; }
@@ -170,6 +173,7 @@
   <span id="last-updated" class="badge">–</span>
   <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <button id="internal-btn" class="internal-btn" onclick="toggleInternal()" title="Show/hide your own visits">🏠 Internal</button>
+  <button class="clear-btn" onclick="clearData()">🗑 Clear all data</button>
 </div>
 
 <main>
