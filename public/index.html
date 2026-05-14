@@ -157,10 +157,14 @@
 
   /* ── Live view ── */
   .live-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 14px; margin-bottom: 20px; }
-  .live-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
-  .live-kpi .live-val   { font-size: 36px; font-weight: 800; }
-  .live-kpi .live-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; margin-top: 4px; }
-  .live-kpi .live-window { font-size: 10px; color: var(--accent); margin-top: 2px; }
+  .live-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 16px; text-align: center; }
+  .live-kpi .live-val   { font-size: 42px; font-weight: 800; line-height: 1; }
+  .live-kpi .live-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; margin-top: 6px; }
+  .live-kpi .live-now   { font-size: 10px; color: var(--green); margin-top: 2px; font-weight: 600; }
+  .live-kpi .live-sub   { font-size: 12px; color: var(--muted); margin-top: 10px; padding-top: 10px;
+                           border-top: 1px solid var(--border); display: flex; justify-content: center;
+                           align-items: baseline; gap: 5px; }
+  .live-kpi .live-sub strong { font-size: 18px; font-weight: 800; color: var(--text); }
   .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green);
            box-shadow: 0 0 0 0 rgba(34,197,94,.4); animation: pulse 1.8s infinite; margin-right: 6px; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.4)} 70%{box-shadow:0 0 0 8px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
@@ -252,22 +256,20 @@
       <div class="live-kpi">
         <div class="live-val" id="live-visitors">–</div>
         <div class="live-label">Active Visitors</div>
-        <div class="live-window">last 5 minutes</div>
-      </div>
-      <div class="live-kpi">
-        <div class="live-val" id="live-pv">–</div>
-        <div class="live-label">Page Views</div>
-        <div class="live-window">last 10 minutes</div>
+        <div class="live-now">● right now</div>
+        <div class="live-sub"><strong id="live-visitors-5m">–</strong> last 5 min</div>
       </div>
       <div class="live-kpi">
         <div class="live-val" id="live-atc">–</div>
         <div class="live-label">Add to Cart</div>
-        <div class="live-window">last 10 minutes</div>
+        <div class="live-now">● right now</div>
+        <div class="live-sub"><strong id="live-atc-10m">–</strong> last 10 min</div>
       </div>
       <div class="live-kpi">
         <div class="live-val" id="live-co">–</div>
         <div class="live-label">Reached Checkout</div>
-        <div class="live-window">last 10 minutes</div>
+        <div class="live-now">● right now</div>
+        <div class="live-sub"><strong id="live-co-10m">–</strong> last 10 min</div>
       </div>
     </div>
     <div id="live-feed" style="margin-top:8px"></div>
@@ -461,7 +463,7 @@ function show() {
   loadData();
   loadLive();
   setInterval(loadData, 15000);
-  setInterval(loadLive, 15000);
+  setInterval(loadLive, 5000); // live section polls every 5s for near-realtime feel
 }
 
 // ── Chart instances ───────────────────────────────────────────────────────────
@@ -546,10 +548,12 @@ async function loadLive() {
     const r    = await fetch('/api/live' + (showInternal ? '?internal=1' : ''));
     const data = await r.json();
 
-    document.getElementById('live-visitors').textContent = fmt(data.visitors_last_5m);
-    document.getElementById('live-pv').textContent       = fmt(data.pageviews_last_10m);
-    document.getElementById('live-atc').textContent      = fmt(data.atc_last_10m);
-    document.getElementById('live-co').textContent       = fmt(data.checkouts_last_10m);
+    document.getElementById('live-visitors').textContent    = fmt(data.visitors_live);
+    document.getElementById('live-visitors-5m').textContent = fmt(data.visitors_last_5m);
+    document.getElementById('live-atc').textContent         = fmt(data.atc_live);
+    document.getElementById('live-atc-10m').textContent     = fmt(data.atc_last_10m);
+    document.getElementById('live-co').textContent          = fmt(data.checkouts_live);
+    document.getElementById('live-co-10m').textContent      = fmt(data.checkouts_last_10m);
 
     const feed = document.getElementById('live-feed');
     if (!data.recent_visitors || !data.recent_visitors.length) {
