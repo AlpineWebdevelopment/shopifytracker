@@ -179,6 +179,26 @@
   .badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--card);
            border: 1px solid var(--border); color: var(--muted); }
 
+  /* ── Scroll heatmap ── */
+  .heatmap-row { display: flex; align-items: center; gap: 12px; padding: 10px 0;
+                 border-bottom: 1px solid var(--border); }
+  .heatmap-row:last-child { border-bottom: none; }
+  .heatmap-row .hm-title { width: 180px; flex-shrink: 0; font-size: 12px; font-weight: 600;
+                            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .heatmap-row .hm-bar   { flex: 1; height: 22px; border-radius: 6px; overflow: hidden;
+                            display: flex; min-width: 100px; }
+  .hm-seg { height: 100%; display: flex; align-items: center; justify-content: center;
+             font-size: 10px; font-weight: 700; color: rgba(255,255,255,.85);
+             transition: width .4s ease; overflow: hidden; white-space: nowrap; }
+  .hm-seg.s0  { background: #ef4444; }
+  .hm-seg.s25 { background: #f59e0b; }
+  .hm-seg.s50 { background: #3b82f6; }
+  .hm-seg.s75 { background: #22c55e; }
+  .hm-legend  { display: flex; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+  .hm-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .hm-legend-dot  { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .hm-exits { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 60px; text-align: right; }
+
   /* ── Visitor split bar ── */
   .split-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 10px 0 6px; }
   .split-bar .s-new { background: var(--accent); }
@@ -317,6 +337,18 @@
       <div class="funnel-arrow">→</div>
       <div class="funnel-step" id="fn-pur"></div>
     </div>
+  </div>
+
+  <!-- Scroll Depth Heatmap -->
+  <div class="panel" style="margin-bottom:28px">
+    <h2>Scroll Depth Heatmap <span style="color:var(--muted);font-size:11px;font-weight:400">— how far visitors scroll on each product</span></h2>
+    <div class="hm-legend">
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:#ef4444"></div>0–25% (top fold only)</div>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:#f59e0b"></div>25–50%</div>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:#3b82f6"></div>50–75%</div>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:#22c55e"></div>75–100% (full page)</div>
+    </div>
+    <div id="scroll-heatmap"><div style="color:var(--muted);font-size:13px;padding:20px 0">No scroll data yet</div></div>
   </div>
 
   <!-- Charts row -->
@@ -570,6 +602,7 @@ async function loadData() {
     renderBrowser(stats.by_browser);
     renderSources(stats.by_source, stats.total_pageviews);
     renderProducts(stats.by_product);
+    renderScrollHeatmap(stats.by_product);
     renderFeed(events);
 
     document.getElementById('last-updated').textContent =
@@ -661,6 +694,34 @@ function renderSources(bySource, total) {
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round((cnt/max)*100)}%"></div></div>
       <span class="count">${cnt}</span>
     </div>`).join('');
+}
+
+function renderScrollHeatmap(products) {
+  const el = document.getElementById('scroll-heatmap');
+  const valid = (products || []).filter(p => p.scroll_exits > 0);
+  if (!valid.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0">No scroll data yet — visit a product page to start collecting</div>';
+    return;
+  }
+  el.innerHTML = valid.map(p => {
+    const b     = p.scroll_buckets;
+    const total = b.s0 + b.s25 + b.s50 + b.s75 || 1;
+    const pct   = v => Math.round((v / total) * 100);
+    const p0    = pct(b.s0), p25 = pct(b.s25), p50 = pct(b.s50), p75 = pct(b.s75);
+    const seg   = (cls, val, pct) => val
+      ? `<div class="hm-seg ${cls}" style="width:${pct}%" title="${val} visitors (${pct}%)">${pct >= 10 ? pct + '%' : ''}</div>`
+      : '';
+    return `<div class="heatmap-row">
+      <div class="hm-title" title="${esc(p.title||'Unknown')}">${esc(p.title||'Unknown')}</div>
+      <div class="hm-bar">
+        ${seg('s0',  b.s0,  p0)}
+        ${seg('s25', b.s25, p25)}
+        ${seg('s50', b.s50, p50)}
+        ${seg('s75', b.s75, p75)}
+      </div>
+      <div class="hm-exits">${p.scroll_exits} exit${p.scroll_exits !== 1 ? 's' : ''}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderProducts(products) {

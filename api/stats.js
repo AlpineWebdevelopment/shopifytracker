@@ -74,19 +74,42 @@ module.exports = async function handler(req, res) {
       if (e.scroll_depth   != null) byProduct[pid].scroll.push(Number(e.scroll_depth));
     }
 
+    // overall scroll depth buckets (all exit events with scroll data)
+    const scrollBuckets = { s0: 0, s25: 0, s50: 0, s75: 0 };
+    for (const pid of Object.keys(byProduct)) {
+      for (const d of byProduct[pid].scroll) {
+        if      (d < 25)  scrollBuckets.s0++;
+        else if (d < 50)  scrollBuckets.s25++;
+        else if (d < 75)  scrollBuckets.s50++;
+        else              scrollBuckets.s75++;
+      }
+    }
+
     const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
 
-    const byProductArr = Object.entries(byProduct).map(([id, v]) => ({
-      product_id: id,
-      title:      v.title,
-      vendor:     v.vendor,
-      views:      v.views,
-      atc:        v.atc,
-      sessions:   v.sessions.size,
-      atc_rate:   v.views ? ((v.atc / v.views) * 100).toFixed(1) + '%' : '0%',
-      avg_time_s: avg(v.tos),
-      avg_scroll: avg(v.scroll),
-    })).sort((a, b) => b.views - a.views);
+    const byProductArr = Object.entries(byProduct).map(([id, v]) => {
+      // per-product scroll buckets
+      const sb = { s0: 0, s25: 0, s50: 0, s75: 0 };
+      for (const d of v.scroll) {
+        if      (d < 25) sb.s0++;
+        else if (d < 50) sb.s25++;
+        else if (d < 75) sb.s50++;
+        else             sb.s75++;
+      }
+      return {
+        product_id:    id,
+        title:         v.title,
+        vendor:        v.vendor,
+        views:         v.views,
+        atc:           v.atc,
+        sessions:      v.sessions.size,
+        atc_rate:      v.views ? ((v.atc / v.views) * 100).toFixed(1) + '%' : '0%',
+        avg_time_s:    avg(v.tos),
+        avg_scroll:    avg(v.scroll),
+        scroll_exits:  v.scroll.length,
+        scroll_buckets: sb,
+      };
+    }).sort((a, b) => b.views - a.views);
 
     // funnel conversion rates
     const pvCount = pageViews.length;
@@ -129,6 +152,7 @@ module.exports = async function handler(req, res) {
         atc_to_checkout:      coRate,
         checkout_to_purchase: purRate,
       },
+      scroll_buckets: scrollBuckets,
       by_product:   byProductArr,
       by_date:      byDate,
       by_device:    byDevice,
