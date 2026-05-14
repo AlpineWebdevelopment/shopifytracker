@@ -22,9 +22,26 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
 
+  /* ── Login overlay ── */
+  #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000;
+                   display: flex; align-items: center; justify-content: center; }
+  .login-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+               padding: 40px 36px; width: 340px; text-align: center; }
+  .login-box h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .login-box p  { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .login-box input { width: 100%; background: var(--surface); border: 1px solid var(--border);
+                     border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 14px;
+                     outline: none; margin-bottom: 12px; }
+  .login-box input:focus { border-color: var(--accent); }
+  .login-box button { width: 100%; background: var(--accent); color: #fff; border: none;
+                      border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 700;
+                      cursor: pointer; }
+  .login-box button:hover { opacity: .88; }
+  .login-error { color: var(--accent3); font-size: 12px; margin-top: 8px; min-height: 16px; }
+
   /* ── Layout ── */
   .topbar { background: var(--surface); border-bottom: 1px solid var(--border);
-            padding: 16px 28px; display: flex; align-items: center; gap: 14px; }
+            padding: 16px 28px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .topbar h1 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
   .topbar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green);
                  box-shadow: 0 0 6px var(--green); }
@@ -33,18 +50,37 @@
   .topbar .refresh-btn { cursor: pointer; background: var(--accent); color: #fff; border: none;
                           border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; }
   .topbar .refresh-btn:hover { opacity: .85; }
+  .export-btn { cursor: pointer; background: transparent; color: var(--accent2); border: 1px solid var(--accent2);
+                border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; }
+  .export-btn:hover { background: rgba(0,212,170,.1); }
+  .internal-btn { cursor: pointer; background: transparent; color: var(--muted); border: 1px solid var(--border);
+                  border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+                  transition: all .15s; }
+  .internal-btn:hover { border-color: var(--orange); color: var(--orange); }
+  .internal-btn.on { background: rgba(245,158,11,.15); color: var(--orange); border-color: var(--orange);
+                     box-shadow: 0 0 8px rgba(245,158,11,.3); }
 
   main { padding: 28px; max-width: 1400px; margin: 0 auto; }
 
+  /* ── Time filter ── */
+  .time-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
+  .time-filter span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase;
+                      letter-spacing: .6px; margin-right: 4px; }
+  .tf-btn { cursor: pointer; background: var(--card); color: var(--muted); border: 1px solid var(--border);
+            border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; transition: all .15s; }
+  .tf-btn:hover { border-color: var(--accent); color: var(--text); }
+  .tf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
   /* ── KPI row ── */
-  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
   .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
          padding: 20px; position: relative; overflow: hidden; }
   .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
-  .kpi.green::before { background: var(--green); }
+  .kpi.green::before  { background: var(--green); }
   .kpi.orange::before { background: var(--orange); }
-  .kpi.red::before { background: var(--accent3); }
-  .kpi.teal::before { background: var(--accent2); }
+  .kpi.red::before    { background: var(--accent3); }
+  .kpi.teal::before   { background: var(--accent2); }
+  .kpi.purple::before { background: #a855f7; }
   .kpi label { display: block; font-size: 11px; color: var(--muted); font-weight: 600;
                text-transform: uppercase; letter-spacing: .7px; margin-bottom: 8px; }
   .kpi .val { font-size: 32px; font-weight: 800; line-height: 1; }
@@ -70,8 +106,9 @@
   tr:hover td { background: var(--surface); }
   .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px;
           font-weight: 700; background: rgba(108,99,255,.18); color: var(--accent); }
-  .pill.green { background: rgba(34,197,94,.15); color: var(--green); }
+  .pill.green  { background: rgba(34,197,94,.15);  color: var(--green); }
   .pill.orange { background: rgba(245,158,11,.15); color: var(--orange); }
+  .pill.red    { background: rgba(255,107,107,.15); color: var(--accent3); }
 
   /* ── Source bar ── */
   .src-list { display: flex; flex-direction: column; gap: 10px; }
@@ -92,21 +129,18 @@
         padding: 9px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .ev .etype { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
                background: rgba(108,99,255,.2); color: var(--accent); }
-  .ev .etype.exit { background: rgba(255,107,107,.15); color: var(--accent3); }
-  .ev .etype.heartbeat { background: rgba(0,212,170,.12); color: var(--accent2); }
-  .ev .etype.atc { background: rgba(34,197,94,.15); color: var(--green); }
-  .ev .eprod { font-size: 12px; font-weight: 600; }
-  .ev .emeta { font-size: 11px; color: var(--muted); margin-left: auto; }
-  .ev .badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--card);
-               border: 1px solid var(--border); color: var(--muted); }
+  .ev .etype.exit      { background: rgba(255,107,107,.15); color: var(--accent3); }
+  .ev .etype.heartbeat { background: rgba(0,212,170,.12);   color: var(--accent2); }
+  .ev .etype.atc       { background: rgba(34,197,94,.15);   color: var(--green); }
+  .ev .eprod  { font-size: 12px; font-weight: 600; }
+  .ev .emeta  { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .ev .badge  { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--card);
+                border: 1px solid var(--border); color: var(--muted); }
 
   /* ── Empty state ── */
   .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
   .empty .icon { font-size: 48px; margin-bottom: 14px; }
   .empty p { font-size: 15px; }
-  .empty code { display: inline-block; margin-top: 10px; background: var(--surface);
-                border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px;
-                font-size: 13px; color: var(--accent2); }
 
   /* ── Funnel ── */
   .funnel-step { flex:1; background: var(--surface); border: 1px solid var(--border);
@@ -118,57 +152,64 @@
   .funnel-arrow { display: flex; align-items: center; padding: 0 8px; color: var(--muted); font-size: 20px; }
 
   /* ── Canvas containers ── */
-  .chart-box { position: relative; height: 220px; }
+  .chart-box    { position: relative; height: 220px; }
   .chart-box.sm { height: 200px; }
 
   /* ── Live view ── */
   .live-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 14px; margin-bottom: 20px; }
-  .live-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; position: relative; }
-  .live-kpi .live-val { font-size: 36px; font-weight: 800; }
+  .live-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .live-kpi .live-val   { font-size: 36px; font-weight: 800; }
   .live-kpi .live-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; margin-top: 4px; }
   .live-kpi .live-window { font-size: 10px; color: var(--accent); margin-top: 2px; }
   .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green);
            box-shadow: 0 0 0 0 rgba(34,197,94,.4); animation: pulse 1.8s infinite; margin-right: 6px; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.4)} 70%{box-shadow:0 0 0 8px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
-  .visitor-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
-  .visitor-row:last-child { border-bottom: none; }
-  .visitor-row .vtime { margin-left: auto; color: var(--muted); white-space: nowrap; font-size: 11px; }
-.internal-btn { cursor: pointer; background: transparent; color: var(--muted); border: 1px solid var(--border);
-                  border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; margin-left: 8px;
-                  transition: all .15s; }
-  .internal-btn:hover { border-color: var(--orange); color: var(--orange); }
-  .internal-btn.on { background: rgba(245,158,11,.15); color: var(--orange); border-color: var(--orange);
-                     box-shadow: 0 0 8px rgba(245,158,11,.3); }
 
-  /* ── Time filter ── */
-  .time-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
-  .time-filter span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase;
-                      letter-spacing: .6px; margin-right: 4px; }
-  .tf-btn { cursor: pointer; background: var(--card); color: var(--muted); border: 1px solid var(--border);
-            border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; transition: all .15s; }
-  .tf-btn:hover { border-color: var(--accent); color: var(--text); }
-  .tf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-  /* ── Visitor row enhanced ── */
+  /* ── Visitor cards ── */
   .visitor-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
                   padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
                   margin-bottom: 8px; }
   .visitor-card .v-flag { font-size: 20px; line-height: 1; flex-shrink: 0; }
-  .visitor-card .v-loc { font-size: 12px; font-weight: 600; color: var(--text); min-width: 100px; }
+  .visitor-card .v-loc  { font-size: 12px; font-weight: 600; color: var(--text); min-width: 100px; }
   .visitor-card .v-loc small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
   .visitor-card .v-prod { font-size: 12px; color: var(--accent2); flex: 1; min-width: 120px;
                           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .visitor-card .v-badges { display: flex; gap: 5px; flex-wrap: wrap; }
   .visitor-card .vtime { margin-left: auto; color: var(--muted); white-space: nowrap; font-size: 11px; font-weight: 600; }
+  .badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--card);
+           border: 1px solid var(--border); color: var(--muted); }
+
+  /* ── Visitor split bar ── */
+  .split-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 10px 0 6px; }
+  .split-bar .s-new { background: var(--accent); }
+  .split-bar .s-ret { background: var(--accent2); }
+  .split-legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
+  .split-legend span::before { content: '●'; margin-right: 4px; }
+  .split-legend .l-new::before { color: var(--accent); }
+  .split-legend .l-ret::before { color: var(--accent2); }
 </style>
 </head>
 <body>
+
+<!-- Login overlay -->
+<div id="login-overlay" style="display:none">
+  <div class="login-box">
+    <h2>🔒 Dashboard</h2>
+    <p>Enter the password to continue</p>
+    <input type="password" id="login-input" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Unlock</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
 
 <div class="topbar">
   <div class="dot"></div>
   <h1>PDP Tracker Dashboard</h1>
   <span id="last-updated" class="badge">–</span>
   <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
   <button id="internal-btn" class="internal-btn" onclick="toggleInternal()" title="Show/hide your own visits">🏠 Internal</button>
 </div>
 
@@ -178,10 +219,10 @@
   <div class="time-filter">
     <span>Period:</span>
     <button class="tf-btn active" data-range="today"     onclick="setRange(this)">Today</button>
-    <button class="tf-btn" data-range="yesterday" onclick="setRange(this)">Yesterday</button>
-    <button class="tf-btn" data-range="7d"        onclick="setRange(this)">Last 7 days</button>
-    <button class="tf-btn" data-range="30d"       onclick="setRange(this)">Last 30 days</button>
-    <button class="tf-btn" data-range="all"       onclick="setRange(this)">All time</button>
+    <button class="tf-btn"        data-range="yesterday" onclick="setRange(this)">Yesterday</button>
+    <button class="tf-btn"        data-range="7d"        onclick="setRange(this)">Last 7 days</button>
+    <button class="tf-btn"        data-range="30d"       onclick="setRange(this)">Last 30 days</button>
+    <button class="tf-btn"        data-range="all"       onclick="setRange(this)">All time</button>
   </div>
 
   <!-- Live view -->
@@ -227,24 +268,37 @@
     <div class="kpi">
       <label>Unique Visitors</label>
       <div class="val" id="kpi-vis">–</div>
-      <div class="sub">distinct visitors</div>
+      <div class="sub" id="kpi-vis-split">distinct visitors</div>
+      <div class="split-bar" id="split-bar" style="display:none">
+        <div class="s-new" id="split-new"></div>
+        <div class="s-ret" id="split-ret"></div>
+      </div>
+      <div class="split-legend" id="split-legend" style="display:none">
+        <span class="l-new" id="split-new-label">–</span>
+        <span class="l-ret" id="split-ret-label">–</span>
+      </div>
     </div>
     <div class="kpi orange">
       <label>Add to Cart</label>
       <div class="val" id="kpi-atc">–</div>
       <div class="sub">ATC button clicks</div>
     </div>
-    <div class="kpi" style="--c:var(--accent2)">
+    <div class="kpi red">
+      <label>Abandoned Cart</label>
+      <div class="val" id="kpi-abandoned">–</div>
+      <div class="sub">ATC, no checkout</div>
+    </div>
+    <div class="kpi teal">
       <label>Checkout Started</label>
       <div class="val" id="kpi-checkout">–</div>
       <div class="sub">proceeded to checkout</div>
     </div>
-    <div class="kpi" style="--c:var(--green)">
+    <div class="kpi green">
       <label>Purchases</label>
       <div class="val" id="kpi-purchase">–</div>
       <div class="sub">order confirmations</div>
     </div>
-    <div class="kpi red">
+    <div class="kpi purple">
       <label>Total Events</label>
       <div class="val" id="kpi-total">–</div>
       <div class="sub">all tracked events</div>
@@ -268,7 +322,6 @@
   <!-- Charts row -->
   <div class="charts-grid">
 
-    <!-- Daily views chart -->
     <div class="panel">
       <h2>Daily Page Views</h2>
       <div class="chart-box">
@@ -276,7 +329,6 @@
       </div>
     </div>
 
-    <!-- Device doughnut -->
     <div class="panel">
       <h2>Device Breakdown</h2>
       <div class="chart-box sm">
@@ -284,7 +336,6 @@
       </div>
     </div>
 
-    <!-- Browser doughnut -->
     <div class="panel">
       <h2>Browser Breakdown</h2>
       <div class="chart-box sm">
@@ -292,7 +343,6 @@
       </div>
     </div>
 
-    <!-- Traffic sources -->
     <div class="panel">
       <h2>Traffic Sources</h2>
       <div class="src-list" id="src-list">
@@ -314,11 +364,13 @@
             <th>Unique Sessions</th>
             <th>Add to Cart</th>
             <th>ATC Rate</th>
+            <th>Avg Time on Page</th>
+            <th>Avg Scroll Depth</th>
             <th>Vendor</th>
           </tr>
         </thead>
         <tbody id="product-table">
-          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No data yet</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:30px">No data yet</td></tr>
         </tbody>
       </table>
     </div>
@@ -331,18 +383,60 @@
       <div class="empty">
         <div class="icon">📭</div>
         <p>No events received yet.</p>
-        <code>node server.js</code>
       </div>
     </div>
   </div>
 
 </main>
+</div><!-- #app -->
 
 <script>
-// ── Chart instances ──────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────────
+async function initAuth() {
+  try {
+    const r = await fetch('/api/auth');
+    const d = await r.json();
+    if (!d.required || sessionStorage.getItem('dash_authed') === '1') {
+      show();
+    } else {
+      document.getElementById('login-overlay').style.display = 'flex';
+    }
+  } catch (_) { show(); } // if auth endpoint missing, just show
+}
+
+async function doLogin() {
+  const pwd = document.getElementById('login-input').value;
+  const err = document.getElementById('login-error');
+  try {
+    const r = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      sessionStorage.setItem('dash_authed', '1');
+      document.getElementById('login-overlay').style.display = 'none';
+      show();
+    } else {
+      err.textContent = 'Wrong password.';
+    }
+  } catch (_) { err.textContent = 'Error — try again.'; }
+}
+
+function show() {
+  document.getElementById('app').style.display = '';
+  loadData();
+  loadLive();
+  setInterval(loadData, 15000);
+  setInterval(loadLive, 15000);
+}
+
+// ── Chart instances ───────────────────────────────────────────────────────────
 let chartDates   = null;
 let chartDevice  = null;
 let chartBrowser = null;
+let lastStats    = null;
 
 const PALETTE = ['#6c63ff','#00d4aa','#ff6b6b','#f59e0b','#3b82f6','#a855f7','#ec4899'];
 
@@ -352,17 +446,9 @@ function buildOrUpdate(ref, canvasId, type, labels, datasets, options) {
   return new Chart(ctx, { type, data: { labels, datasets }, options });
 }
 
-// ── Time filter ──────────────────────────────────────────────────────────────
-let activeRange      = 'today';
-let showInternal     = false;
-
-function toggleInternal() {
-  showInternal = !showInternal;
-  const btn = document.getElementById('internal-btn');
-  btn.classList.toggle('on', showInternal);
-  loadData();
-  loadLive();
-}
+// ── Time filter ───────────────────────────────────────────────────────────────
+let activeRange  = 'today';
+let showInternal = false;
 
 function setRange(btn) {
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
@@ -376,50 +462,53 @@ function rangeParams() {
   const pad   = n => String(n).padStart(2,'0');
   const ymd   = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const today = ymd(now);
-  if (activeRange === 'today') {
-    return `from=${today}&to=${today}`;
-  }
+  if (activeRange === 'today')     return `from=${today}&to=${today}`;
   if (activeRange === 'yesterday') {
-    const y = new Date(now); y.setDate(y.getDate()-1);
-    const s = ymd(y);
+    const y = new Date(now); y.setDate(y.getDate()-1); const s = ymd(y);
     return `from=${s}&to=${s}`;
   }
-  if (activeRange === '7d') {
-    const s = new Date(now); s.setDate(s.getDate()-6);
-    return `from=${ymd(s)}&to=${today}`;
-  }
-  if (activeRange === '30d') {
-    const s = new Date(now); s.setDate(s.getDate()-29);
-    return `from=${ymd(s)}&to=${today}`;
-  }
-  return ''; // all time
+  if (activeRange === '7d')  { const s = new Date(now); s.setDate(s.getDate()-6);  return `from=${ymd(s)}&to=${today}`; }
+  if (activeRange === '30d') { const s = new Date(now); s.setDate(s.getDate()-29); return `from=${ymd(s)}&to=${today}`; }
+  return '';
 }
 
-// ── Relative time helper ─────────────────────────────────────────────────────
+function toggleInternal() {
+  showInternal = !showInternal;
+  document.getElementById('internal-btn').classList.toggle('on', showInternal);
+  loadData();
+  loadLive();
+}
+
+// ── Relative time ─────────────────────────────────────────────────────────────
 function relTime(ts) {
   if (!ts) return '–';
   const sec = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
-  if (sec < 5)   return 'just now';
-  if (sec < 60)  return sec + 's ago';
+  if (sec < 5)  return 'just now';
+  if (sec < 60) return sec + 's ago';
   const min = Math.round(sec / 60);
-  if (min < 60)  return min + 'm ago';
-  const hr = Math.round(min / 60);
-  return hr + 'h ago';
+  if (min < 60) return min + 'm ago';
+  return Math.round(min / 60) + 'h ago';
 }
 
-// ── Clear all data ───────────────────────────────────────────────────────────
-async function clearData() {
-  if (!confirm('Clear ALL tracking data? This cannot be undone.')) return;
-  try {
-    const r = await fetch('/api/clear', { method: 'POST' });
-    if (!r.ok) throw new Error('Failed');
-    alert('All data cleared.');
-    loadData();
-    loadLive();
-  } catch(e) { alert('Error: ' + e.message); }
+// ── CSV export ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!lastStats || !lastStats.by_product) return alert('No data to export yet.');
+  const rows = [
+    ['Product', 'Views', 'Sessions', 'Add to Cart', 'ATC Rate', 'Avg Time (s)', 'Avg Scroll %', 'Vendor'],
+    ...lastStats.by_product.map(p => [
+      p.title || 'Unknown', p.views, p.sessions, p.atc, p.atc_rate,
+      p.avg_time_s ?? '', p.avg_scroll ?? '', p.vendor || '',
+    ])
+  ];
+  const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `tracker-${activeRange}-${new Date().toISOString().slice(0,10)}.csv` });
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-// ── Live view ────────────────────────────────────────────────────────────────
+// ── Live view ─────────────────────────────────────────────────────────────────
 async function loadLive() {
   try {
     const r    = await fetch('/api/live' + (showInternal ? '?internal=1' : ''));
@@ -438,17 +527,19 @@ async function loadLive() {
     feed.innerHTML = data.recent_visitors.map(v => {
       const src     = v.referrer_source || 'direct';
       const locLine = v.city ? `${v.city}, ${v.country}` : (v.country || 'Unknown');
-      const flagStr = v.flag || '🌐';
       const prod    = v.product_title || v.landing_url || '–';
+      const fbBadge = /facebook/i.test(src)
+        ? `<span class="badge" style="display:inline-flex;align-items:center;gap:4px;color:#1877F2"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.413c0-3.025 1.791-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.885v2.266h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>Facebook</span>`
+        : `<span class="badge" style="color:var(--accent2)">${esc(src)}</span>`;
       return `<div class="visitor-card" ${v._internal ? 'style="opacity:.55;border-color:#f59e0b"' : ''}>
-        <span class="v-flag">${flagStr}</span>
+        <span class="v-flag">${v.flag || '🌐'}</span>
         <div class="v-loc">${esc(locLine)}<small>${esc(v.region||'')}</small></div>
         <span class="v-prod" title="${esc(prod)}">${esc(prod)}</span>
         <div class="v-badges">
           ${v._internal ? '<span class="badge" style="color:#f59e0b;border-color:#f59e0b">🏠 Internal</span>' : ''}
           <span class="badge">${esc(v.device||'?')}</span>
           <span class="badge">${esc(v.browser||'?')}</span>
-          ${/facebook/i.test(src) ? `<span class="badge" style="display:inline-flex;align-items:center;gap:4px;color:#1877F2"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.413c0-3.025 1.791-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.885v2.266h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>Facebook</span>` : `<span class="badge" style="color:var(--accent2)">${esc(src)}</span>`}
+          ${fbBadge}
         </div>
         <span class="vtime">${relTime(v.ts)}</span>
       </div>`;
@@ -456,13 +547,14 @@ async function loadLive() {
   } catch(e) { console.error('[live]', e); }
 }
 
-// ── Fetch & render ───────────────────────────────────────────────────────────
+// ── Fetch & render ────────────────────────────────────────────────────────────
 async function loadData() {
   try {
-    const qs = rangeParams();
+    const qs         = rangeParams();
     const internalQs = showInternal ? 'internal=1' : '';
-    const combined = [qs, internalQs].filter(Boolean).join('&');
-    const statsUrl = combined ? `/api/stats?${combined}` : '/api/stats';
+    const combined   = [qs, internalQs].filter(Boolean).join('&');
+    const statsUrl   = combined ? `/api/stats?${combined}` : '/api/stats';
+
     const [statsRes, eventsRes] = await Promise.all([
       fetch(statsUrl),
       fetch('/api/events')
@@ -470,6 +562,7 @@ async function loadData() {
     if (!statsRes.ok || !eventsRes.ok) throw new Error('Server error');
     const stats  = await statsRes.json();
     const events = await eventsRes.json();
+    lastStats = stats;
 
     renderKPIs(stats);
     renderDates(stats.by_date);
@@ -488,13 +581,27 @@ async function loadData() {
 }
 
 function renderKPIs(s) {
-  document.getElementById('kpi-pv').textContent       = fmt(s.total_pageviews);
-  document.getElementById('kpi-sess').textContent     = fmt(s.unique_sessions);
-  document.getElementById('kpi-vis').textContent      = fmt(s.unique_visitors);
-  document.getElementById('kpi-atc').textContent      = fmt(s.add_to_cart);
-  document.getElementById('kpi-checkout').textContent = fmt(s.checkout_started);
-  document.getElementById('kpi-purchase').textContent = fmt(s.purchases);
-  document.getElementById('kpi-total').textContent    = fmt(s.total_events);
+  document.getElementById('kpi-pv').textContent        = fmt(s.total_pageviews);
+  document.getElementById('kpi-sess').textContent      = fmt(s.unique_sessions);
+  document.getElementById('kpi-vis').textContent       = fmt(s.unique_visitors);
+  document.getElementById('kpi-atc').textContent       = fmt(s.add_to_cart);
+  document.getElementById('kpi-abandoned').textContent = fmt(s.abandoned_cart);
+  document.getElementById('kpi-checkout').textContent  = fmt(s.checkout_started);
+  document.getElementById('kpi-purchase').textContent  = fmt(s.purchases);
+  document.getElementById('kpi-total').textContent     = fmt(s.total_events);
+
+  // New vs returning visitor split bar
+  const nv = s.new_visitors || 0, rv = s.returning_visitors || 0, total = nv + rv;
+  if (total > 0) {
+    const newPct = Math.round((nv / total) * 100);
+    document.getElementById('split-bar').style.display    = 'flex';
+    document.getElementById('split-legend').style.display = 'flex';
+    document.getElementById('split-new').style.width      = newPct + '%';
+    document.getElementById('split-ret').style.width      = (100 - newPct) + '%';
+    document.getElementById('split-new-label').textContent = `New ${nv}`;
+    document.getElementById('split-ret-label').textContent = `Returning ${rv}`;
+    document.getElementById('kpi-vis-split').style.display = 'none';
+  }
 
   // Funnel
   const f = s.funnel || {};
@@ -505,60 +612,48 @@ function renderKPIs(s) {
 }
 
 function renderDates(byDate) {
-  const sorted = Object.entries(byDate).sort((a, b) => a[0].localeCompare(b[0]));
-  const labels = sorted.map(x => x[0]);
-  const data   = sorted.map(x => x[1]);
-
-  chartDates = buildOrUpdate(chartDates, 'chartDates', 'bar', labels, [{
-    label: 'Page Views',
-    data,
-    backgroundColor: 'rgba(108,99,255,0.55)',
-    borderColor: '#6c63ff',
-    borderWidth: 2,
-    borderRadius: 5,
-    hoverBackgroundColor: '#6c63ff'
-  }], {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: '#7b80a0', font: { size: 11 } }, grid: { color: '#2e3248' } },
-      y: { ticks: { color: '#7b80a0', font: { size: 11 } }, grid: { color: '#2e3248' }, beginAtZero: true }
-    }
-  });
+  const sorted = Object.entries(byDate || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  chartDates = buildOrUpdate(chartDates, 'chartDates', 'bar',
+    sorted.map(x => x[0]), [{
+      label: 'Page Views', data: sorted.map(x => x[1]),
+      backgroundColor: 'rgba(108,99,255,0.55)', borderColor: '#6c63ff',
+      borderWidth: 2, borderRadius: 5, hoverBackgroundColor: '#6c63ff'
+    }], {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#7b80a0', font: { size: 11 } }, grid: { color: '#2e3248' } },
+        y: { ticks: { color: '#7b80a0', font: { size: 11 } }, grid: { color: '#2e3248' }, beginAtZero: true }
+      }
+    });
 }
 
 function renderDevice(byDevice) {
-  const labels = Object.keys(byDevice);
-  const data   = Object.values(byDevice);
+  const labels = Object.keys(byDevice || {});
   chartDevice = buildOrUpdate(chartDevice, 'chartDevice', 'doughnut', labels, [{
-    data, backgroundColor: ['#6c63ff','#00d4aa','#f59e0b'], borderWidth: 0, hoverOffset: 6
+    data: Object.values(byDevice || {}),
+    backgroundColor: ['#6c63ff','#00d4aa','#f59e0b'], borderWidth: 0, hoverOffset: 6
   }], {
-    responsive: true, maintainAspectRatio: false,
-    cutout: '68%',
-    plugins: {
-      legend: { position: 'bottom', labels: { color: '#7b80a0', font: { size: 11 }, boxWidth: 12, padding: 14 } }
-    }
+    responsive: true, maintainAspectRatio: false, cutout: '68%',
+    plugins: { legend: { position: 'bottom', labels: { color: '#7b80a0', font: { size: 11 }, boxWidth: 12, padding: 14 } } }
   });
 }
 
 function renderBrowser(byBrowser) {
-  const labels = Object.keys(byBrowser);
-  const data   = Object.values(byBrowser);
-  chartBrowser = buildOrUpdate(chartBrowser, 'chartBrowser', 'doughnut', labels, [{
-    data, backgroundColor: PALETTE, borderWidth: 0, hoverOffset: 6
-  }], {
-    responsive: true, maintainAspectRatio: false,
-    cutout: '68%',
-    plugins: {
-      legend: { position: 'bottom', labels: { color: '#7b80a0', font: { size: 11 }, boxWidth: 12, padding: 12 } }
-    }
-  });
+  chartBrowser = buildOrUpdate(chartBrowser, 'chartBrowser', 'doughnut',
+    Object.keys(byBrowser || {}), [{
+      data: Object.values(byBrowser || {}),
+      backgroundColor: PALETTE, borderWidth: 0, hoverOffset: 6
+    }], {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { position: 'bottom', labels: { color: '#7b80a0', font: { size: 11 }, boxWidth: 12, padding: 12 } } }
+    });
 }
 
 function renderSources(bySource, total) {
-  const sorted = Object.entries(bySource).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const sorted = Object.entries(bySource || {}).sort((a, b) => b[1] - a[1]).slice(0, 10);
   const max    = sorted[0] ? sorted[0][1] : 1;
-  const el = document.getElementById('src-list');
+  const el     = document.getElementById('src-list');
   if (!sorted.length) { el.innerHTML = '<div class="empty" style="padding:20px 0"><div class="icon">📡</div><p>No source data</p></div>'; return; }
   el.innerHTML = sorted.map(([src, cnt]) => `
     <div class="src-item">
@@ -571,18 +666,23 @@ function renderSources(bySource, total) {
 function renderProducts(products) {
   const tbody = document.getElementById('product-table');
   if (!products || !products.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No product data yet</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:30px">No product data yet</td></tr>';
     return;
   }
-  tbody.innerHTML = products.map(p => `
-    <tr>
+  tbody.innerHTML = products.map(p => {
+    const tos    = p.avg_time_s != null ? fmtTime(p.avg_time_s) : '<span style="color:var(--muted)">–</span>';
+    const scroll = p.avg_scroll != null ? `<span class="pill">${p.avg_scroll}%</span>` : '<span style="color:var(--muted)">–</span>';
+    return `<tr>
       <td><strong>${esc(p.title || 'Unknown')}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(String(p.product_id))}</span></td>
       <td><span class="pill">${fmt(p.views)}</span></td>
       <td>${fmt(p.sessions)}</td>
       <td>${fmt(p.atc)}</td>
       <td><span class="pill ${parseFloat(p.atc_rate) > 5 ? 'green' : 'orange'}">${esc(p.atc_rate)}</span></td>
+      <td>${tos}</td>
+      <td>${scroll}</td>
       <td style="color:var(--muted)">${esc(p.vendor || '–')}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function renderFeed(events) {
@@ -590,39 +690,36 @@ function renderFeed(events) {
   if (!events || !events.length) return;
   const recent = [...events].reverse().slice(0, 50);
   el.innerHTML = recent.map(e => {
-    const typeClass = e.event === 'page_exit' ? 'exit'
-                    : e.event === 'heartbeat'  ? 'heartbeat'
-                    : e.added_to_cart          ? 'atc'
-                    : '';
-    const label = e.added_to_cart && e.event === 'page_view' ? '🛒 page_view+ATC' : esc(e.event);
-    const time  = e.ts ? new Date(e.ts).toLocaleTimeString() : '–';
-    const scroll = e.scroll_depth != null ? `scroll ${e.scroll_depth}%` : '';
-    const tos    = e.time_on_page_s != null ? `${e.time_on_page_s}s on page` : '';
+    const typeClass = e.event === 'page_exit' ? 'exit' : e.event === 'heartbeat' ? 'heartbeat' : e.added_to_cart ? 'atc' : '';
+    const label  = e.added_to_cart && e.event === 'page_view' ? '🛒 page_view+ATC' : esc(e.event);
+    const time   = e.ts ? new Date(e.ts).toLocaleTimeString() : '–';
+    const scroll = e.scroll_depth    != null ? `scroll ${e.scroll_depth}%` : '';
+    const tos    = e.time_on_page_s  != null ? `${e.time_on_page_s}s on page` : '';
     return `
       <div class="ev" ${e._internal ? 'style="opacity:.5;border-color:#f59e0b"' : ''}>
         ${e._internal ? '<span class="badge" style="color:#f59e0b;border-color:#f59e0b">🏠</span>' : ''}
         <span class="etype ${typeClass}">${label}</span>
         <span class="eprod">${esc(e.product_title || e.product_handle || String(e.product_id || ''))}</span>
-        ${e.device ? `<span class="badge">${esc(e.device)}</span>` : ''}
+        ${e.device  ? `<span class="badge">${esc(e.device)}</span>`  : ''}
         ${e.browser ? `<span class="badge">${esc(e.browser)}</span>` : ''}
-        ${scroll ? `<span class="badge">${scroll}</span>` : ''}
-        ${tos    ? `<span class="badge">${tos}</span>` : ''}
+        ${scroll    ? `<span class="badge">${scroll}</span>`          : ''}
+        ${tos       ? `<span class="badge">${tos}</span>`             : ''}
         <span class="emeta">${time}</span>
       </div>`;
   }).join('');
 }
 
-// ── Utils ────────────────────────────────────────────────────────────────────
+// ── Utils ─────────────────────────────────────────────────────────────────────
 function fmt(n) { return n == null ? '–' : Number(n).toLocaleString(); }
-function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTime(s) {
+  if (s == null) return '–';
+  if (s < 60)   return `<span class="pill">${s}s</span>`;
+  return `<span class="pill">${Math.floor(s/60)}m ${s%60}s</span>`;
 }
 
-// ── Auto-refresh ─────────────────────────────────────────────────────────────
-loadData();
-loadLive();
-setInterval(loadData, 15000);
-setInterval(loadLive, 15000); // live refreshes every 15s too
+// ── Boot ──────────────────────────────────────────────────────────────────────
+initAuth();
 </script>
 </body>
 </html>

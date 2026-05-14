@@ -30,6 +30,7 @@ module.exports = async function handler(req, res) {
     const atcEvents       = events.filter(e => e.event === 'add_to_cart');
     const checkoutEvents  = events.filter(e => e.event === 'checkout_started');
     const purchaseEvents  = events.filter(e => e.event === 'purchase');
+    const exitEvents      = events.filter(e => e.event === 'page_exit');
 
     const byProduct = {};
     const byDate    = {};
@@ -38,18 +39,17 @@ module.exports = async function handler(req, res) {
     const bySource  = {};
     const sessions  = new Set();
     const visitors  = new Set();
-    let   atcCount  = atcEvents.length;
 
     // seed ATC counts per product from dedicated add_to_cart events
     for (const e of atcEvents) {
       const pid = String(e.product_id || 'unknown');
-      if (!byProduct[pid]) byProduct[pid] = { title: e.product_title, vendor: e.product_vendor, views: 0, atc: 0, sessions: new Set() };
+      if (!byProduct[pid]) byProduct[pid] = { title: e.product_title, vendor: e.product_vendor, views: 0, atc: 0, sessions: new Set(), tos: [], scroll: [] };
       byProduct[pid].atc++;
     }
 
     for (const e of pageViews) {
       const pid = String(e.product_id || 'unknown');
-      if (!byProduct[pid]) byProduct[pid] = { title: e.product_title, vendor: e.product_vendor, views: 0, atc: 0, sessions: new Set() };
+      if (!byProduct[pid]) byProduct[pid] = { title: e.product_title, vendor: e.product_vendor, views: 0, atc: 0, sessions: new Set(), tos: [], scroll: [] };
       byProduct[pid].views++;
       byProduct[pid].sessions.add(e.session_id);
 
@@ -66,36 +66,74 @@ module.exports = async function handler(req, res) {
       if (e.visitor_id) visitors.add(e.visitor_id);
     }
 
+    // time-on-page and scroll depth come from page_exit events
+    for (const e of exitEvents) {
+      const pid = String(e.product_id || 'unknown');
+      if (!byProduct[pid]) byProduct[pid] = { title: e.product_title, vendor: e.product_vendor, views: 0, atc: 0, sessions: new Set(), tos: [], scroll: [] };
+      if (e.time_on_page_s != null) byProduct[pid].tos.push(Number(e.time_on_page_s));
+      if (e.scroll_depth   != null) byProduct[pid].scroll.push(Number(e.scroll_depth));
+    }
+
+    const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+
     const byProductArr = Object.entries(byProduct).map(([id, v]) => ({
-      product_id: id, title: v.title, vendor: v.vendor,
-      views: v.views, atc: v.atc, sessions: v.sessions.size,
-      atc_rate: v.views ? ((v.atc / v.views) * 100).toFixed(1) + '%' : '0%',
+      product_id: id,
+      title:      v.title,
+      vendor:     v.vendor,
+      views:      v.views,
+      atc:        v.atc,
+      sessions:   v.sessions.size,
+      atc_rate:   v.views ? ((v.atc / v.views) * 100).toFixed(1) + '%' : '0%',
+      avg_time_s: avg(v.tos),
+      avg_scroll: avg(v.scroll),
     })).sort((a, b) => b.views - a.views);
 
     // funnel conversion rates
-    const pvCount  = pageViews.length;
-    const atcRate  = pvCount  ? ((atcEvents.length  / pvCount)              * 100).toFixed(1) + '%' : '0%';
-    const coRate   = atcEvents.length ? ((checkoutEvents.length / atcEvents.length) * 100).toFixed(1) + '%' : '0%';
-    const purRate  = checkoutEvents.length ? ((purchaseEvents.length / checkoutEvents.length) * 100).toFixed(1) + '%' : '0%';
+    const pvCount = pageViews.length;
+    const atcRate = pvCount           ? ((atcEvents.length      / pvCount)              * 100).toFixed(1) + '%' : '0%';
+    const coRate  = atcEvents.length  ? ((checkoutEvents.length / atcEvents.length)     * 100).toFixed(1) + '%' : '0%';
+    const purRate = checkoutEvents.length ? ((purchaseEvents.length / checkoutEvents.length) * 100).toFixed(1) + '%' : '0%';
+
+    // returning vs new visitors
+    const visitorSessions = {};
+    for (const e of pageViews) {
+      if (!e.visitor_id || !e.session_id) continue;
+      if (!visitorSessions[e.visitor_id]) visitorSessions[e.visitor_id] = new Set();
+      visitorSessions[e.visitor_id].add(e.session_id);
+    }
+    let newVisitors = 0, returningVisitors = 0;
+    for (const sess of Object.values(visitorSessions)) {
+      if (sess.size > 1) returningVisitors++;
+      else newVisitors++;
+    }
+
+    // abandoned cart: sessions with ATC but no checkout
+    const atcSessions      = new Set(atcEvents.map(e => e.session_id).filter(Boolean));
+    const checkoutSessions = new Set(checkoutEvents.map(e => e.session_id).filter(Boolean));
+    let abandonedCart = 0;
+    for (const s of atcSessions) { if (!checkoutSessions.has(s)) abandonedCart++; }
 
     res.status(200).json({
-      total_events:       events.length,
-      total_pageviews:    pvCount,
-      unique_sessions:    sessions.size,
-      unique_visitors:    visitors.size,
-      add_to_cart:        atcEvents.length,
-      checkout_started:   checkoutEvents.length,
-      purchases:          purchaseEvents.length,
+      total_events:        events.length,
+      total_pageviews:     pvCount,
+      unique_sessions:     sessions.size,
+      unique_visitors:     visitors.size,
+      new_visitors:        newVisitors,
+      returning_visitors:  returningVisitors,
+      add_to_cart:         atcEvents.length,
+      checkout_started:    checkoutEvents.length,
+      purchases:           purchaseEvents.length,
+      abandoned_cart:      abandonedCart,
       funnel: {
-        pdp_to_atc:        atcRate,
-        atc_to_checkout:   coRate,
+        pdp_to_atc:           atcRate,
+        atc_to_checkout:      coRate,
         checkout_to_purchase: purRate,
       },
-      by_product:         byProductArr,
-      by_date:            byDate,
-      by_device:          byDevice,
-      by_browser:         byBrowser,
-      by_source:          bySource,
+      by_product:   byProductArr,
+      by_date:      byDate,
+      by_device:    byDevice,
+      by_browser:   byBrowser,
+      by_source:    bySource,
     });
   } catch (err) {
     console.error('[stats]', err.message);
