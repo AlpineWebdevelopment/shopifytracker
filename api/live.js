@@ -9,19 +9,30 @@ module.exports = async function handler(req, res) {
     const ago10  = new Date(now - 10 * 60 * 1000).toISOString();
     const ago30  = new Date(now - 30 * 60 * 1000).toISOString();
 
-    // fetch last 30 min of events — enough for all windows
-    const r = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/events?select=data,created_at&created_at=gte.${ago30}&order=created_at.desc`,
-      {
-        headers: {
-          'apikey':        process.env.SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
-    const rows   = await r.json();
+    // midnight today (UTC) — for full-day visitor list
+    const todayStart = new Date(now);
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayISO = todayStart.toISOString();
+
     const includeInternal = req.query.internal === '1';
-    const events = rows.map(row => ({ ...row.data, _db_ts: row.created_at })).filter(e => includeInternal || !e._internal);
+
+    // two parallel fetches: 30-min window for counts, full today for visitor list
+    const [rCounts, rToday] = await Promise.all([
+      fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/events?select=data,created_at&created_at=gte.${ago30}&order=created_at.desc`,
+        { headers: { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}` } }
+      ),
+      fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/events?select=data,created_at&created_at=gte.${todayISO}&order=created_at.desc`,
+        { headers: { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}` } }
+      ),
+    ]);
+
+    const rowsCounts = await rCounts.json();
+    const rowsToday  = await rToday.json();
+
+    const events      = rowsCounts.map(row => ({ ...row.data, _db_ts: row.created_at })).filter(e => includeInternal || !e._internal);
+    const eventsToday = rowsToday.map(row  => ({ ...row.data, _db_ts: row.created_at })).filter(e => includeInternal || !e._internal);
 
     function since(list, iso) {
       return list.filter(e => (e._db_ts || e.ts || '') >= iso);
@@ -41,11 +52,10 @@ module.exports = async function handler(req, res) {
     const atc10m         = last10.filter(e => e.event === 'add_to_cart');
     const checkouts10m   = last10.filter(e => e.event === 'checkout_started');
 
-    // recent visitor list (last 30 min, deduplicated by session)
+    // full today visitor list, deduplicated by session
     const seenSess = new Set();
-    const recentVisitors = events
+    const recentVisitors = eventsToday
       .filter(e => e.event === 'page_view' && e.session_id && !seenSess.has(e.session_id) && seenSess.add(e.session_id))
-      .slice(0, 20)
       .map(e => ({
         session_id:      e.session_id,
         device:          e.device,

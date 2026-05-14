@@ -557,10 +557,16 @@ async function loadLive() {
 
     const feed = document.getElementById('live-feed');
     if (!data.recent_visitors || !data.recent_visitors.length) {
-      feed.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">No visitors in the last 30 min</div>';
+      feed.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">No visitors today yet</div>';
       return;
     }
-    feed.innerHTML = data.recent_visitors.map(v => {
+
+    const all     = data.recent_visitors;
+    const total   = all.length;
+    let expanded  = feed.dataset.expanded === 'true'; // preserve state across refreshes
+    const visible = expanded ? all : all.slice(0, 3);
+
+    const cardHTML = visitors => visitors.map(v => {
       const src     = v.referrer_source || 'direct';
       const locLine = v.city ? `${v.city}, ${v.country}` : (v.country || 'Unknown');
       const prod    = v.product_title || v.landing_url || '–';
@@ -579,8 +585,27 @@ async function loadLive() {
         </div>
         <span class="vtime">${relTime(v.ts)}</span>
       </div>`;
-    }).join('');
+    });
+
+    const toggleBtn = total > 3 ? `
+      <button onclick="toggleVisitors(this)" data-total="${total}"
+        style="width:100%;margin-top:6px;padding:9px;background:transparent;border:1px dashed var(--border);
+               border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+        ${expanded ? '↑ Show less' : `↓ Show all ${total} visitors today`}
+      </button>` : '';
+
+    feed.dataset.expanded = expanded;
+    feed.innerHTML = cardHTML(visible).join('') + toggleBtn;
   } catch(e) { console.error('[live]', e); }
+}
+
+function toggleVisitors(btn) {
+  const feed     = document.getElementById('live-feed');
+  const expanded = feed.dataset.expanded === 'true';
+  feed.dataset.expanded = !expanded;
+  loadLive(); // re-render with new state
 }
 
 // ── Fetch & render ────────────────────────────────────────────────────────────
