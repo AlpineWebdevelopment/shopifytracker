@@ -4,7 +4,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const now    = new Date();
-    const ago2s  = new Date(now - 2  *      1000).toISOString();
+    const ago2s  = new Date(now - 2  * 60 * 1000).toISOString();
     const ago5   = new Date(now - 5  * 60 * 1000).toISOString();
     const ago10  = new Date(now - 10 * 60 * 1000).toISOString();
     const ago30  = new Date(now - 30 * 60 * 1000).toISOString();
