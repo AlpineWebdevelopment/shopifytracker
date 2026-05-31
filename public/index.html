@@ -213,6 +213,24 @@
   .badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--card);
            border: 1px solid var(--border); color: var(--muted); }
 
+  /* ── Page filter chip ── */
+  .page-filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .page-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(108,99,255,.18);
+               border: 1px solid var(--accent); border-radius: 20px; padding: 5px 12px;
+               font-size: 12px; color: var(--accent); font-weight: 600; }
+  .page-chip button { background: none; border: none; color: var(--accent); cursor: pointer;
+                      font-size: 14px; line-height: 1; padding: 0 0 0 4px; opacity: .7; }
+  .page-chip button:hover { opacity: 1; }
+
+  /* ── Pages table ── */
+  .url-row { cursor: pointer; }
+  .url-row:hover td { background: rgba(108,99,255,.08) !important; }
+  .url-row.active td { background: rgba(108,99,255,.14) !important; }
+  .url-path { font-size: 12px; font-weight: 600; color: var(--text); max-width: 340px;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .url-domain { font-size: 10px; color: var(--muted); background: var(--surface);
+                border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px; }
+
   /* ── Scroll heatmap ── */
   .heatmap-row { display: flex; align-items: center; gap: 12px; padding: 10px 0;
                  border-bottom: 1px solid var(--border); }
@@ -269,6 +287,16 @@
 
 <main>
 
+  <!-- Active page filter chip -->
+  <div class="page-filter-bar" id="page-filter-bar" style="display:none">
+    <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px">Filtering:</span>
+    <div class="page-chip">
+      <span id="page-chip-label"></span>
+      <button onclick="clearPageFilter()" title="Clear filter">×</button>
+    </div>
+    <span style="font-size:11px;color:var(--muted)">— all stats below are for this page only</span>
+  </div>
+
   <!-- Time filter bar -->
   <div class="time-filter">
     <span>Period:</span>
@@ -277,6 +305,28 @@
     <button class="tf-btn"        data-range="7d"        onclick="setRange(this)">Last 7 days</button>
     <button class="tf-btn"        data-range="30d"       onclick="setRange(this)">Last 30 days</button>
     <button class="tf-btn"        data-range="all"       onclick="setRange(this)">All time</button>
+  </div>
+
+  <!-- Pages panel -->
+  <div class="panel" style="margin-bottom:28px">
+    <h2>Tracked Pages <span style="color:var(--muted);font-size:11px;font-weight:400">— click a row to filter all stats to that page</span></h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Page / URL</th>
+            <th>Domain</th>
+            <th>Views</th>
+            <th>Sessions</th>
+            <th>Avg Time</th>
+            <th>Avg Scroll</th>
+          </tr>
+        </thead>
+        <tbody id="pages-table">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No pages tracked yet</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Live view -->
@@ -513,6 +563,21 @@ function buildOrUpdate(ref, canvasId, type, labels, datasets, options) {
 // ── Time filter ───────────────────────────────────────────────────────────────
 let activeRange  = 'today';
 let showInternal = false;
+let activePage   = null; // full URL or null = all pages
+
+function setPageFilter(url, label) {
+  activePage = url;
+  document.getElementById('page-chip-label').textContent = label;
+  document.getElementById('page-filter-bar').style.display = 'flex';
+  loadData();
+}
+function clearPageFilter() {
+  activePage = null;
+  document.getElementById('page-filter-bar').style.display = 'none';
+  // re-highlight active row
+  document.querySelectorAll('.url-row').forEach(r => r.classList.remove('active'));
+  loadData();
+}
 
 function setRange(btn) {
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
@@ -643,7 +708,8 @@ async function loadData() {
   try {
     const qs         = rangeParams();
     const internalQs = showInternal ? 'internal=1' : '';
-    const combined   = [qs, internalQs].filter(Boolean).join('&');
+    const pageQs     = activePage   ? 'page=' + encodeURIComponent(activePage) : '';
+    const combined   = [qs, internalQs, pageQs].filter(Boolean).join('&');
     const statsUrl   = combined ? `/api/stats?${combined}` : '/api/stats';
 
     const [statsRes, eventsRes] = await Promise.all([
@@ -655,6 +721,7 @@ async function loadData() {
     const events = await eventsRes.json();
     lastStats = stats;
 
+    renderPages(stats.by_url);
     renderKPIs(stats);
     renderDates(stats.by_date);
     renderDevice(stats.by_device);
@@ -753,6 +820,28 @@ function renderSources(bySource, total) {
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round((cnt/max)*100)}%"></div></div>
       <span class="count">${cnt}</span>
     </div>`).join('');
+}
+
+function renderPages(byUrl) {
+  const tbody = document.getElementById('pages-table');
+  if (!byUrl || !byUrl.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No pages tracked yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = byUrl.map(p => {
+    const isActive = activePage === p.url;
+    const label    = p.path && p.path !== p.url ? p.path : p.url;
+    return `<tr class="url-row${isActive ? ' active' : ''}" onclick="setPageFilter(${JSON.stringify(p.url)}, ${JSON.stringify(label)})">
+      <td>
+        <div class="url-path" title="${esc(p.url)}">${esc(label)}</div>
+      </td>
+      <td><span class="url-domain">${esc(p.domain || '–')}</span></td>
+      <td><span class="pill">${fmt(p.views)}</span></td>
+      <td>${fmt(p.sessions)}</td>
+      <td>${p.avg_time_s != null ? fmtTime(p.avg_time_s) : '<span style="color:var(--muted)">–</span>'}</td>
+      <td>${p.avg_scroll != null ? `<span class="pill">${p.avg_scroll}%</span>` : '<span style="color:var(--muted)">–</span>'}</td>
+    </tr>`;
+  }).join('');
 }
 
 function renderScrollHeatmap(products) {
